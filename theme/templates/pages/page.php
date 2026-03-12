@@ -18,13 +18,15 @@ require_once __DIR__ . '/includes/menu_helpers.php';
 <?php include __DIR__ . '/../partials/head.php'; ?>
 
     <!-- Default Page -->
+    <!-- LIVEED_BODY_START -->
     <div id="app" class="min-h-screen bg-slate-50 flex flex-col">
 
         <?php include __DIR__ . '/../partials/header.php'; ?>
 
         <!-- Main Content -->
         <main id="main-area" class="flex-1">
-            <div class="drop-area"></div>
+            <!-- LIVEED_CANVAS -->
         </main>
 
+        <!-- LIVEED_BODY_END -->
         <?php include __DIR__ . '/../partials/footer.php'; ?>
