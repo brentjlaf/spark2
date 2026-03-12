@@ -16,9 +16,122 @@ let currentEditId = null;
 let pickerTargetId = null;
 let isSavingEdit = false;
 
-const cacheTTL = 30000; // 30 seconds
+const cacheTTL = 300000; // 5 minutes
 let folderCache = { data: null, time: 0 };
 const imageCache = new Map();
+
+function invalidateMediaPickerCache(folder) {
+  folderCache = { data: null, time: 0 };
+  if (folder) {
+    imageCache.delete(folder);
+    return;
+  }
+  imageCache.clear();
+}
+
+function setListState(container, type, message, onRetry) {
+  if (!container) return;
+  const existingItems = container.querySelectorAll('[data-folder], [data-media-id]');
+  existingItems.forEach((item) => item.remove());
+
+  let state = container.querySelector('[data-picker-state]');
+  if (!state) {
+    state = document.createElement('div');
+    state.dataset.pickerState = 'true';
+    state.className = 'picker-state';
+    container.appendChild(state);
+  }
+
+  state.dataset.stateType = type;
+  state.textContent = message || '';
+
+  const existingRetry = state.querySelector('button');
+  if (existingRetry) existingRetry.remove();
+  if (type === 'error' && typeof onRetry === 'function') {
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'picker-retry-btn';
+    retry.textContent = 'Retry';
+    retry.addEventListener('click', onRetry, { once: true });
+    state.appendChild(document.createTextNode(' '));
+    state.appendChild(retry);
+  }
+}
+
+function clearListState(container) {
+  if (!container) return;
+  const state = container.querySelector('[data-picker-state]');
+  if (state) state.remove();
+}
+
+function upsertFolderItem(existing, folderData, cmsBase) {
+  const name = typeof folderData === 'string' ? folderData : folderData.name;
+  const thumb = folderData.thumbnail ? cmsBase + '/' + folderData.thumbnail : null;
+  const li = existing || document.createElement('li');
+  li.dataset.folder = name;
+  li.className = 'picker-folder-item';
+  li.classList.toggle('active', currentFolder === name);
+
+  let img = li.querySelector('img');
+  if (thumb) {
+    if (!img) {
+      img = document.createElement('img');
+      li.appendChild(img);
+    }
+    img.src = thumb;
+    img.alt = name;
+  } else if (img) {
+    img.remove();
+  }
+
+  let span = li.querySelector('span');
+  if (!span) {
+    span = document.createElement('span');
+    li.appendChild(span);
+  }
+  span.textContent = name;
+
+  return li;
+}
+
+function upsertImageItem(existing, img, cmsBase) {
+  const src = cmsBase + '/' + (img.thumbnail ? img.thumbnail : img.file);
+  const full = cmsBase + '/' + img.file;
+  const item = existing || document.createElement('div');
+  item.className = 'picker-image-item';
+  item.dataset.mediaId = String(img.id);
+
+  let el = item.querySelector('img[data-file]');
+  if (!el) {
+    el = document.createElement('img');
+    item.appendChild(el);
+  }
+  el.src = src;
+  el.dataset.file = full;
+  el.dataset.id = img.id;
+
+  let overlay = item.querySelector('.picker-image-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'picker-image-overlay';
+    item.appendChild(overlay);
+  }
+
+  let edit = overlay.querySelector('.edit-btn');
+  if (!edit) {
+    edit = document.createElement('button');
+    edit.className = 'edit-btn';
+    edit.type = 'button';
+    overlay.appendChild(edit);
+  }
+  edit.textContent = '✎';
+  edit.onclick = (e) => {
+    e.stopPropagation();
+    openEdit(img.id, full);
+  };
+
+  return item;
+}
 
 export function initMediaPicker(options = {}) {
   basePath = options.basePath || '';
@@ -69,6 +182,15 @@ export function initMediaPicker(options = {}) {
       if (cropper) cropper.zoomTo(parseFloat(pickerScale.value));
     });
   }
+
+  document.addEventListener('media:uploaded', (e) => {
+    const folder = e?.detail?.folder;
+    invalidateMediaPickerCache(folder);
+  });
+  document.addEventListener('media:cropped', (e) => {
+    const folder = e?.detail?.folder;
+    invalidateMediaPickerCache(folder || currentFolder);
+  });
 }
 
 export function openMediaPicker(targetId) {
@@ -94,6 +216,7 @@ async function loadPickerFolders() {
     renderFolders(folderCache.data);
     return;
   }
+  setListState(pickerFolderList, 'loading', 'Loading folders…');
   try {
     const r = await fetch(basePath + '/CMS/modules/media/list_media.php');
     const data = await r.json();
@@ -101,32 +224,36 @@ async function loadPickerFolders() {
     renderFolders(data);
   } catch (err) {
     console.error('Failed to load folders', err);
+    setListState(
+      pickerFolderList,
+      'error',
+      'Unable to load folders.',
+      () => { loadPickerFolders(); }
+    );
   }
 }
 
 function renderFolders(data) {
   if (!pickerFolderList) return;
-  pickerFolderList.innerHTML = '';
+  clearListState(pickerFolderList);
   const cmsBase = basePath + '/CMS';
-  const frag = document.createDocumentFragment();
+  const byKey = new Map(
+    Array.from(pickerFolderList.querySelectorAll('li[data-folder]')).map((li) => [li.dataset.folder, li])
+  );
+  const nextKeys = new Set();
+
   (data.folders || []).forEach((f) => {
     const name = typeof f === 'string' ? f : f.name;
-    const thumb = f.thumbnail ? cmsBase + '/' + f.thumbnail : null;
-    const li = document.createElement('li');
-    li.dataset.folder = name;
-    li.className = 'picker-folder-item';
-    if (thumb) {
-      const img = document.createElement('img');
-      img.src = thumb;
-      img.alt = name;
-      li.appendChild(img);
-    }
-    const span = document.createElement('span');
-    span.textContent = name;
-    li.appendChild(span);
-    frag.appendChild(li);
+    nextKeys.add(name);
+    const li = upsertFolderItem(byKey.get(name), f, cmsBase);
+    pickerFolderList.appendChild(li);
   });
-  pickerFolderList.appendChild(frag);
+
+  byKey.forEach((li, key) => {
+    if (!nextKeys.has(key)) li.remove();
+  });
+
+  if (!nextKeys.size) setListState(pickerFolderList, 'empty', 'No folders available.');
 }
 
 async function selectPickerFolder(folder) {
@@ -143,6 +270,7 @@ async function selectPickerFolder(folder) {
   if (cache && now - cache.time < cacheTTL) {
     data = cache.data;
   } else {
+    setListState(pickerImageGrid, 'loading', 'Loading images…');
     try {
       const r = await fetch(
         basePath + '/CMS/modules/media/list_media.php?folder=' + encodeURIComponent(folder)
@@ -151,38 +279,40 @@ async function selectPickerFolder(folder) {
       imageCache.set(folder, { data, time: now });
     } catch (err) {
       console.error('Failed to load media', err);
+      setListState(
+        pickerImageGrid,
+        'error',
+        'Unable to load media.',
+        () => { selectPickerFolder(folder); }
+      );
       return;
     }
   }
 
+  renderImages(data);
+}
+
+function renderImages(data) {
   if (!pickerImageGrid) return;
-  pickerImageGrid.innerHTML = '';
+  clearListState(pickerImageGrid);
   const cmsBase = basePath + '/CMS';
-  const frag = document.createDocumentFragment();
+  const byKey = new Map(
+    Array.from(pickerImageGrid.querySelectorAll('[data-media-id]')).map((el) => [el.dataset.mediaId, el])
+  );
+  const nextKeys = new Set();
+
   (data.media || []).forEach((img) => {
-    const src = cmsBase + '/' + (img.thumbnail ? img.thumbnail : img.file);
-    const full = cmsBase + '/' + img.file;
-    const item = document.createElement('div');
-    item.className = 'picker-image-item';
-    const el = document.createElement('img');
-    el.src = src;
-    el.dataset.file = full;
-    el.dataset.id = img.id;
-    item.appendChild(el);
-    const overlay = document.createElement('div');
-    overlay.className = 'picker-image-overlay';
-    const edit = document.createElement('button');
-    edit.className = 'edit-btn';
-    edit.textContent = '✎';
-    edit.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openEdit(img.id, full);
-    });
-    overlay.appendChild(edit);
-    item.appendChild(overlay);
-    frag.appendChild(item);
+    const key = String(img.id);
+    nextKeys.add(key);
+    const item = upsertImageItem(byKey.get(key), img, cmsBase);
+    pickerImageGrid.appendChild(item);
   });
-  pickerImageGrid.appendChild(frag);
+
+  byKey.forEach((item, key) => {
+    if (!nextKeys.has(key)) item.remove();
+  });
+
+  if (!nextKeys.size) setListState(pickerImageGrid, 'empty', 'No images in this folder.');
 }
 
 
@@ -264,8 +394,8 @@ async function saveEditedImage() {
     }
 
     setCropSaveState('success');
-    folderCache = { data: null, time: 0 };
-    if (currentFolder) imageCache.delete(currentFolder);
+    invalidateMediaPickerCache(currentFolder);
+    document.dispatchEvent(new CustomEvent('media:cropped', { detail: { folder: currentFolder } }));
     await loadPickerFolders();
     if (currentFolder) await selectPickerFolder(currentFolder);
     closeEdit();
