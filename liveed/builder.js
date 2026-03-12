@@ -160,31 +160,179 @@ function toggleFavorite(file) {
 
 let saveTimer;
 
-function checkLinks(html) {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const warnings = [];
-  const checks = [];
+const LINK_CHECK_CACHE_TTL_MS = 45000;
+const LINK_CHECK_CONCURRENCY = 4;
+const linkCheckCache = new Map();
+let previousSavedLinkTargets = new Set();
+let linkCheckEnabled = true;
 
-  const check = (url, type) => {
+function loadLinkCheckEnabled() {
+  const stored = localStorage.getItem('builder-link-check-enabled');
+  if (stored === '0' || stored === 'false') return false;
+  if (stored === '1' || stored === 'true') return true;
+  if (typeof window.builderLinkCheckEnabled === 'boolean') {
+    return window.builderLinkCheckEnabled;
+  }
+  return true;
+}
+
+function setLinkCheckEnabled(value) {
+  linkCheckEnabled = !!value;
+  localStorage.setItem('builder-link-check-enabled', linkCheckEnabled ? '1' : '0');
+  window.builderLinkCheckEnabled = linkCheckEnabled;
+}
+
+function collectLinkTargets(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const targets = new Map();
+
+  const addTarget = (url, type) => {
     if (!url) return;
     try {
       const full = new URL(url, window.location.href).href;
-      checks.push(
-        fetch(full, { method: 'HEAD' })
-          .then((r) => {
-            if (!r.ok) warnings.push(`${type} ${url} returned ${r.status}`);
-          })
-          .catch(() => warnings.push(`${type} ${url} unreachable`))
-      );
+      targets.set(`${type}:${full}`, { originalUrl: url, fullUrl: full, type });
     } catch (e) {
-      warnings.push(`${type} ${url} invalid`);
+      targets.set(`${type}:invalid:${url}`, { originalUrl: url, fullUrl: null, type, invalid: true });
     }
   };
 
-  doc.querySelectorAll('a[href]').forEach((el) => check(el.getAttribute('href'), 'Link'));
-  doc.querySelectorAll('img[src]').forEach((el) => check(el.getAttribute('src'), 'Image'));
+  doc.querySelectorAll('a[href]').forEach((el) => addTarget(el.getAttribute('href'), 'Link'));
+  doc.querySelectorAll('img[src]').forEach((el) => addTarget(el.getAttribute('src'), 'Image'));
+  return targets;
+}
 
-  return Promise.all(checks).then(() => warnings);
+function runWithConcurrency(items, limit, worker) {
+  if (!items.length) return Promise.resolve();
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () =>
+    (async () => {
+      while (cursor < items.length) {
+        const index = cursor++;
+        await worker(items[index]);
+      }
+    })()
+  );
+  return Promise.all(workers).then(() => undefined);
+}
+
+function checkLinks(html, options = {}) {
+  const { skip = false } = options;
+  const targets = collectLinkTargets(html);
+  const currentTargetKeys = new Set(targets.keys());
+
+  if (skip || !linkCheckEnabled) {
+    return Promise.resolve({ warnings: [], targetKeys: currentTargetKeys });
+  }
+
+  const warnings = [];
+  const changedTargets = [];
+
+  targets.forEach((target, key) => {
+    if (target.invalid) {
+      warnings.push(`${target.type} ${target.originalUrl} invalid`);
+      return;
+    }
+    if (!previousSavedLinkTargets.has(key)) {
+      changedTargets.push({ key, ...target });
+    }
+  });
+
+  return runWithConcurrency(changedTargets, LINK_CHECK_CONCURRENCY, (target) => {
+    const now = Date.now();
+    const cached = linkCheckCache.get(target.key);
+    if (cached && cached.expiresAt > now) {
+      if (cached.warning) warnings.push(cached.warning);
+      return Promise.resolve();
+    }
+
+    return fetch(target.fullUrl, { method: 'HEAD' })
+      .then((r) => {
+        const warning = r.ok ? null : `${target.type} ${target.originalUrl} returned ${r.status}`;
+        linkCheckCache.set(target.key, {
+          warning,
+          expiresAt: now + LINK_CHECK_CACHE_TTL_MS,
+        });
+        if (warning) warnings.push(warning);
+      })
+      .catch(() => {
+        const warning = `${target.type} ${target.originalUrl} unreachable`;
+        linkCheckCache.set(target.key, {
+          warning,
+          expiresAt: now + LINK_CHECK_CACHE_TTL_MS,
+        });
+        warnings.push(warning);
+      });
+  }).then(() => ({ warnings, targetKeys: currentTargetKeys }));
+}
+
+function savePage(options = {}) {
+  const { skipLinkChecks = false } = options;
+  if (!canvas) return;
+  const statusEl = document.getElementById('saveStatus');
+  const html = canvas.innerHTML;
+
+  if (statusEl) {
+    statusEl.textContent = skipLinkChecks || !linkCheckEnabled ? 'Saving...' : 'Checking links...';
+    statusEl.classList.add('saving');
+    statusEl.classList.remove('error');
+  }
+
+  checkLinks(html, { skip: skipLinkChecks })
+    .then(({ warnings, targetKeys }) => {
+      if (warnings.length) {
+        console.warn('Link issues found:', warnings.join('\n'));
+        if (statusEl) {
+          statusEl.textContent = 'Link issues found';
+          statusEl.classList.add('error');
+          statusEl.classList.remove('saving');
+          setTimeout(() => {
+            if (statusEl.textContent === 'Link issues found') {
+              statusEl.textContent = '';
+              statusEl.classList.remove('error');
+            }
+          }, 4000);
+        }
+      }
+
+      const fd = new FormData();
+      fd.append('id', window.builderPageId);
+      fd.append('content', html);
+
+      if (statusEl) statusEl.textContent = 'Saving...';
+
+      appendApiAction(fd, 'save-content');
+      return fetch(getApiUrl(window.builderBase, 'save-content'), {
+        method: 'POST',
+        body: fd,
+      }).then((r) => {
+        if (!r.ok) throw new Error('Save failed');
+        return r.text().then(() => targetKeys);
+      });
+    })
+    .then((targetKeys) => {
+      previousSavedLinkTargets = new Set(targetKeys);
+      localStorage.removeItem(builderDraftKey);
+      lastSavedTimestamp = Date.now();
+      if (statusEl) {
+        statusEl.textContent = 'Saved';
+        statusEl.classList.remove('saving');
+      }
+      const lastSavedEl = document.getElementById('lastSavedTime');
+      if (lastSavedEl) {
+        const now = new Date();
+        lastSavedEl.textContent = 'Last saved: ' + now.toLocaleString();
+      }
+      setTimeout(() => {
+        if (statusEl && statusEl.textContent === 'Saved') statusEl.textContent = '';
+      }, 2000);
+    })
+    .catch(() => {
+      if (statusEl) {
+        statusEl.textContent = 'Error saving';
+        statusEl.classList.add('error');
+        statusEl.classList.remove('saving');
+      }
+    });
 }
 
 function checkSeo(html) {
@@ -199,78 +347,10 @@ function checkSeo(html) {
   }
   return issues;
 }
-function savePage() {
-  if (!canvas) return;
-  const statusEl = document.getElementById('saveStatus');
-  const html = canvas.innerHTML;
-
-  if (statusEl) {
-    statusEl.textContent = 'Checking links...';
-    statusEl.classList.add('saving');
-    statusEl.classList.remove('error');
-  }
-
-  checkLinks(html).then((warnings) => {
-    if (warnings.length) {
-      console.warn('Link issues found:', warnings.join('\n'));
-      if (statusEl) {
-        statusEl.textContent = 'Link issues found';
-        statusEl.classList.add('error');
-        statusEl.classList.remove('saving');
-        setTimeout(() => {
-          if (statusEl.textContent === 'Link issues found') {
-            statusEl.textContent = '';
-            statusEl.classList.remove('error');
-          }
-        }, 4000);
-      }
-    }
-
-    const fd = new FormData();
-    fd.append('id', window.builderPageId);
-    fd.append('content', html);
-
-    if (statusEl) statusEl.textContent = 'Saving...';
-
-    appendApiAction(fd, 'save-content');
-    fetch(getApiUrl(window.builderBase, 'save-content'), {
-      method: 'POST',
-      body: fd,
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error('Save failed');
-        return r.text();
-      })
-      .then(() => {
-        localStorage.removeItem(builderDraftKey);
-        lastSavedTimestamp = Date.now();
-        if (statusEl) {
-          statusEl.textContent = 'Saved';
-          statusEl.classList.remove('saving');
-        }
-        const lastSavedEl = document.getElementById('lastSavedTime');
-        if (lastSavedEl) {
-          const now = new Date();
-          lastSavedEl.textContent = 'Last saved: ' + now.toLocaleString();
-        }
-        setTimeout(() => {
-          if (statusEl && statusEl.textContent === 'Saved') statusEl.textContent = '';
-        }, 2000);
-      })
-      .catch(() => {
-        if (statusEl) {
-          statusEl.textContent = 'Error saving';
-          statusEl.classList.add('error');
-          statusEl.classList.remove('saving');
-        }
-      });
-  });
-}
-
 function scheduleSave() {
   clearTimeout(saveTimer);
   storeDraft();
-  saveTimer = setTimeout(savePage, SAVE_DEBOUNCE_DELAY);
+  saveTimer = setTimeout(() => savePage(), SAVE_DEBOUNCE_DELAY);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -293,6 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   builderDraftKey = 'builderDraft-' + window.builderPageId;
+  setLinkCheckEnabled(loadLinkCheckEnabled());
+  window.setLinkCheckEnabled = setLinkCheckEnabled;
   lastSavedTimestamp = window.builderLastModified || 0;
   const draft = localStorage.getItem(builderDraftKey);
   if (draft) {
@@ -309,6 +391,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  previousSavedLinkTargets = new Set(collectLinkTargets(canvas.innerHTML).keys());
+
   fetch(getApiUrl(window.builderBase, 'load-draft', { id: window.builderPageId }))
     .then((r) => (r.ok ? r.json() : null))
     .then((serverDraft) => {
@@ -316,6 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.innerHTML = serverDraft.content;
         lastSavedTimestamp = serverDraft.timestamp;
         localStorage.setItem(builderDraftKey, JSON.stringify(serverDraft));
+        previousSavedLinkTargets = new Set(collectLinkTargets(canvas.innerHTML).keys());
       }
     })
     .catch(() => {});
@@ -370,9 +455,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (undoBtn) undoBtn.addEventListener('click', () => history.undo());
   if (redoBtn) redoBtn.addEventListener('click', () => history.redo());
   if (saveBtn)
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', (e) => {
       clearTimeout(saveTimer);
-      savePage();
+      const fastSave = e && (e.shiftKey || e.altKey);
+      savePage({ skipLinkChecks: fastSave });
     });
   initWysiwyg(canvas, true);
   initMediaPicker({ basePath: window.builderBase });
