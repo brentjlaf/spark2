@@ -351,7 +351,7 @@ function renderBlock(block) {
     if (contents) contents.forEach((n) => area.appendChild(n));
   });
   block.innerHTML = temp.innerHTML;
-  executeScripts(block);
+  executeScripts(block, { blockType: block.dataset.template ? block.dataset.template.replace(/\.php$/, '') : undefined });
   block.querySelectorAll('.drop-area').forEach((a) => (a.dataset.dropArea = 'true'));
   inputs.forEach((input) => {
     const name = input.name;
