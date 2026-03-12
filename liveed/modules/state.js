@@ -39,4 +39,19 @@ export function getSetting(block, name, defaultValue = '') {
   return s[name] !== undefined ? s[name] : defaultValue;
 }
 
+export function deleteBlockState(blockOrId) {
+  if (!blockOrId) return false;
+  const id = typeof blockOrId === 'string'
+    ? blockOrId
+    : blockOrId.dataset
+      ? blockOrId.dataset.blockId
+      : null;
+  if (!id) return false;
+  return stateMap.delete(id);
+}
+
+export function resetStateMap() {
+  stateMap.clear();
+}
+
 export { stateMap };
