@@ -14,6 +14,7 @@ let cropper = null;
 let currentFolder = null;
 let currentEditId = null;
 let pickerTargetId = null;
+let isSavingEdit = false;
 
 const cacheTTL = 30000; // 30 seconds
 let folderCache = { data: null, time: 0 };
@@ -202,9 +203,39 @@ function closeEdit() {
     cropper.destroy();
     cropper = null;
   }
+  setCropSaveState('idle');
+  isSavingEdit = false;
 }
 
-function saveEditedImage() {
+function setCropSaveState(state, message) {
+  if (!pickerEditSave) return;
+  const label = pickerEditSave.querySelector('.btn-label');
+  const defaultText = pickerEditSave.dataset.defaultLabel || (label ? label.textContent : pickerEditSave.textContent);
+  if (!pickerEditSave.dataset.defaultLabel) pickerEditSave.dataset.defaultLabel = defaultText;
+
+  pickerEditSave.dataset.saveState = state;
+  if (state === 'saving') {
+    pickerEditSave.disabled = true;
+  } else {
+    pickerEditSave.disabled = false;
+  }
+
+  const text = message || (
+    state === 'saving' ? 'Saving…' :
+    state === 'success' ? 'Saved' :
+    state === 'error' ? 'Save failed' :
+    defaultText
+  );
+
+  if (label) {
+    label.textContent = text;
+  } else {
+    pickerEditSave.textContent = text;
+  }
+}
+
+async function saveEditedImage() {
+  if (isSavingEdit) return;
   if (!cropper || !currentEditId) return;
   const canvas = cropper.getCroppedCanvas();
   const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
@@ -213,12 +244,40 @@ function saveEditedImage() {
   fd.append('image', dataUrl);
   fd.append('new_version', window.confirm('Create a new version?') ? '1' : '0');
   fd.append('format', 'jpeg');
-  fetch(basePath + '/CMS/modules/media/crop_media.php', {
-    method: 'POST',
-    body: fd,
-  }).then(() => {
+
+  isSavingEdit = true;
+  setCropSaveState('saving');
+
+  try {
+    const response = await fetch(basePath + '/CMS/modules/media/crop_media.php', {
+      method: 'POST',
+      body: fd,
+    });
+
+    if (!response.ok) {
+      throw new Error('Crop request failed with status ' + response.status);
+    }
+
+    const payload = await response.json();
+    if (!payload || payload.status !== 'success') {
+      throw new Error('Crop request returned an error response');
+    }
+
+    setCropSaveState('success');
+    folderCache = { data: null, time: 0 };
+    if (currentFolder) imageCache.delete(currentFolder);
+    await loadPickerFolders();
+    if (currentFolder) await selectPickerFolder(currentFolder);
     closeEdit();
-    loadPickerFolders();
-    if (currentFolder) selectPickerFolder(currentFolder);
-  });
+  } catch (err) {
+    console.error('Failed to save edited image', err);
+    setCropSaveState('error');
+  } finally {
+    isSavingEdit = false;
+    if (pickerEditModal && !pickerEditModal.classList.contains('active')) {
+      setCropSaveState('idle');
+    } else if (pickerEditSave && pickerEditSave.dataset.saveState === 'saving') {
+      setCropSaveState('idle');
+    }
+  }
 }
