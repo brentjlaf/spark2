@@ -6,7 +6,7 @@ import { initUndoRedo } from './modules/undoRedo.js';
 import { initWysiwyg } from './modules/wysiwyg.js';
 import { initMediaPicker, openMediaPicker } from './modules/mediaPicker.js';
 import { executeScripts } from "./modules/executeScripts.js";
-import { appendApiAction, getApiUrl } from './modules/api.js';
+import { getApiUrl } from './modules/api.js';
 
 let allBlockFiles = [];
 let favorites = new Set();
@@ -32,8 +32,6 @@ function storeDraft() {
   fd.append('id', window.builderPageId);
   fd.append('content', data.html);
   fd.append('timestamp', data.timestamp);
-  appendApiAction(fd, 'save-draft');
-
   if (draftSaveAbortController) {
     draftSaveAbortController.abort();
   }
@@ -343,7 +341,6 @@ function savePage(options = {}) {
       }
       saveAbortController = new AbortController();
 
-      appendApiAction(fd, 'save-content');
       return fetch(getApiUrl(window.builderBase, 'save-content'), {
         method: 'POST',
         body: fd,

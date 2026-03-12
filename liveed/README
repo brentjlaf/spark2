@@ -1,0 +1,23 @@
+# LiveEd API contract
+
+LiveEd builder client code must call a single endpoint:
+
+- `GET|POST /liveed/api.php?action=<action>[&key=value...]`
+
+## Canonical client helper
+
+Use `liveed/modules/api.js#getApiUrl(basePath, action, params)` to build all
+LiveEd API URLs.
+
+- `action` is required and is encoded as a query parameter.
+- `params` are appended as query parameters.
+- POST requests should still send `action` in the URL query string and use the
+  request body only for payload fields.
+
+## Supported actions (current)
+
+- `list-blocks` (GET)
+- `load-block` (GET, `file`)
+- `load-draft` (GET, `id`)
+- `save-draft` (POST, `id`, `content`, optional `timestamp`)
+- `save-content` (POST, `id`, `content`)
