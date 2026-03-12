@@ -468,7 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
   canvas.addEventListener('change', scheduleSave);
 
   canvas.querySelectorAll('.block-wrapper').forEach(addBlockControls);
-  executeScripts(canvas);
+  executeScripts(canvas, { blockType: null });
 
   function updateCanvasPlaceholder() {
     const placeholder = canvas.querySelector('.canvas-placeholder');
@@ -513,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       addBlockControls(clone);
       applyStoredSettings(clone);
-      executeScripts(clone);
+      executeScripts(clone, { blockType: clone.dataset.template ? clone.dataset.template.replace(/\.php$/, '') : undefined });
       document.dispatchEvent(new Event('canvasUpdated'));
     } else if (e.target.closest('.block-controls .delete')) {
       confirmDelete('Delete this block?').then((ok) => {

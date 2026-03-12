@@ -276,7 +276,7 @@ function handleDrop(e) {
             .replace(/\b\w/g, (c) => c.toUpperCase());
           wrapper.setAttribute('data-tpl-tooltip', label);
           wrapper.innerHTML = cleaned;
-          executeScripts(wrapper);
+          executeScripts(wrapper, { blockType: wrapper.dataset.template ? wrapper.dataset.template.replace(/\.php$/, '') : undefined });
           if (applyStoredSettings) applyStoredSettings(wrapper);
           addBlockControls(wrapper);
           if (after == null) area.appendChild(wrapper);
