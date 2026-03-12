@@ -10,16 +10,37 @@ let savePageFn;
 let renderDebounce;
 
 const FORMS_SELECT_ATTR = 'data-forms-select';
+const FORMS_CACHE_TTL_MS = 2 * 60 * 1000;
 let cachedForms = null;
 let formsRequest = null;
+
+function hasFreshFormsCache() {
+  return !!(
+    cachedForms &&
+    Array.isArray(cachedForms.data) &&
+    typeof cachedForms.time === 'number' &&
+    Date.now() - cachedForms.time < FORMS_CACHE_TTL_MS
+  );
+}
+
+function setFormsCache(data) {
+  const normalized = Array.isArray(data) ? data : [];
+  cachedForms = { data: normalized, time: Date.now() };
+  return normalized;
+}
 
 function getFormsEndpoint() {
   const base = (window.builderBase || window.cmsBase || '').replace(/\/$/, '');
   return (base || '') + '/CMS/modules/forms/list_forms.php';
 }
 
-function fetchFormsList() {
-  if (cachedForms) return Promise.resolve(cachedForms);
+function fetchFormsList({ force = false, allowStale = false } = {}) {
+  if (!force) {
+    if (hasFreshFormsCache()) return Promise.resolve(cachedForms.data);
+    if (allowStale && cachedForms && Array.isArray(cachedForms.data)) {
+      return Promise.resolve(cachedForms.data);
+    }
+  }
   if (formsRequest) return formsRequest;
   const endpoint = getFormsEndpoint();
   formsRequest = fetch(endpoint, { credentials: 'same-origin' })
@@ -27,23 +48,25 @@ function fetchFormsList() {
       if (!response.ok) throw new Error('Failed to load forms');
       return response.json();
     })
-    .then((data) => {
-      cachedForms = Array.isArray(data) ? data : [];
-      return cachedForms;
-    })
+    .then((data) => setFormsCache(data))
     .catch(() => {
-      cachedForms = [];
-      return cachedForms;
+      if (cachedForms && Array.isArray(cachedForms.data)) {
+        return cachedForms.data;
+      }
+      return setFormsCache([]);
+    })
+    .finally(() => {
+      formsRequest = null;
     });
   return formsRequest;
 }
 
-function populateFormsSelects(container, block) {
-  if (!container) return;
+function populateFormsSelects(container, block, options = {}) {
+  if (!container) return Promise.resolve([]);
   const selects = container.querySelectorAll(`select[${FORMS_SELECT_ATTR}]`);
-  if (!selects.length) return;
+  if (!selects.length) return Promise.resolve([]);
 
-  fetchFormsList().then((forms) => {
+  return fetchFormsList(options).then((forms) => {
     selects.forEach((select) => {
       const placeholder = select.dataset.placeholder || 'Select a form...';
       const storedValue = block ? getSetting(block, select.name) : select.value;
@@ -77,7 +100,20 @@ function populateFormsSelects(container, block) {
         }
       }
     });
+    return forms;
   });
+}
+
+function refreshFormsInPanel(block, options = {}) {
+  if (!settingsPanel || !block) return Promise.resolve([]);
+  return populateFormsSelects(settingsPanel, block, options);
+}
+
+function maybeRefreshFormsOnOpen(block) {
+  if (!settingsPanel || !block || hasFreshFormsCache()) return;
+  const hasFormsSelect = settingsPanel.querySelector(`select[${FORMS_SELECT_ATTR}]`);
+  if (!hasFormsSelect) return;
+  refreshFormsInPanel(block, { force: true });
 }
 
 function scheduleRender(block) {
@@ -155,6 +191,17 @@ export function initSettings(options = {}) {
         settingsPanel.classList.remove('open');
         settingsPanel.block = null;
         canvas.querySelectorAll('.block-wrapper').forEach((b) => b.classList.remove('selected'));
+      } else if (e.target.id === 'refresh-forms') {
+        const block = settingsPanel.block;
+        if (!block) return;
+        const refreshBtn = e.target;
+        const previousLabel = refreshBtn.textContent;
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = 'Refreshing...';
+        refreshFormsInPanel(block, { force: true }).finally(() => {
+          refreshBtn.disabled = false;
+          refreshBtn.textContent = previousLabel;
+        });
       }
     });
 
@@ -198,6 +245,7 @@ export function openSettings(block) {
   if (settingsContent) {
     settingsContent.innerHTML = getSettingsForm(template, block);
     initTemplateSettingValues(block);
+    maybeRefreshFormsOnOpen(block);
   }
   if (settingsPanel) {
     settingsPanel.classList.add('open');
@@ -261,10 +309,15 @@ export function confirmDelete(message) {
 function getSettingsForm(template, block) {
   const templateSetting = getTemplateSettingElement(block);
   let form = '';
+  let hasFormsSelect = false;
   if (templateSetting) {
+    hasFormsSelect = !!templateSetting.querySelector(`select[${FORMS_SELECT_ATTR}]`);
     form += templateSetting.innerHTML;
   } else {
     form += '<p>No settings available for this block.</p>';
+  }
+  if (hasFormsSelect) {
+    form += '<button type="button" id="refresh-forms" class="btn btn-secondary">Refresh forms</button>';
   }
   form += '<button id="apply-settings" class="btn btn-primary">Apply</button>';
   form += '<button id="cancel-settings" class="btn btn-secondary">Cancel</button>';
@@ -274,7 +327,7 @@ function getSettingsForm(template, block) {
 function initTemplateSettingValues(block) {
   const templateSetting = getTemplateSettingElement(block);
   if (!templateSetting || !settingsPanel) return;
-  populateFormsSelects(settingsPanel, block);
+  populateFormsSelects(settingsPanel, block, { allowStale: true });
   // Prefill alt text suggestions for any alt inputs
   const altInputs = templateSetting.querySelectorAll('input[name^="custom_alt"]');
   altInputs.forEach((inp) => {
