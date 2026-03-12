@@ -1,7 +1,7 @@
 // File: dragDrop.js
 import { ensureBlockState } from './state.js';
 import { executeScripts } from "./executeScripts.js";
-import { getApiUrl } from './api.js';
+import { getApiUrl, parseJsonResponse } from './api.js';
 
 const templateCache = new Map();
 const TEMPLATE_FAILURE_TTL_MS = 3000;
@@ -18,11 +18,12 @@ function loadTemplate(file) {
     return typeof cached === 'string' ? Promise.resolve(cached) : cached;
   }
   const p = fetch(getApiUrl(basePath, 'load-block', { file }))
-    .then((r) => {
-      if (!r.ok) throw new Error(`Failed to load template: ${r.status}`);
-      return r.text();
-    })
-    .then((html) => {
+    .then((response) => parseJsonResponse(response, 'Failed to load template'))
+    .then((payload) => {
+      const html = payload?.html;
+      if (typeof html !== 'string') {
+        throw new Error('Template response missing html payload.');
+      }
       templateCache.set(file, html);
       return html;
     })

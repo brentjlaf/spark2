@@ -6,7 +6,7 @@ import { initUndoRedo } from './modules/undoRedo.js';
 import { initWysiwyg } from './modules/wysiwyg.js';
 import { initMediaPicker, openMediaPicker } from './modules/mediaPicker.js';
 import { executeScripts } from "./modules/executeScripts.js";
-import { appendApiAction, getApiUrl } from './modules/api.js';
+import { appendApiAction, getApiUrl, parseJsonResponse } from './modules/api.js';
 
 let allBlockFiles = [];
 let favorites = new Set();
@@ -36,6 +36,11 @@ function syncStateMapWithCanvas() {
     }
   });
 }
+
+function getErrorMessage(error, fallback = 'Request failed.') {
+  return (error && error.message) || fallback;
+}
+
 function storeDraft() {
   if (!canvas) return;
   const data = {
@@ -59,10 +64,13 @@ function storeDraft() {
     method: 'POST',
     body: fd,
     signal: draftSaveAbortController.signal,
-  }).catch((error) => {
-    if (error && error.name === 'AbortError') return;
-    if (requestId !== draftSaveRequestId) return;
-  });
+  })
+    .then((response) => parseJsonResponse(response, 'Unable to save draft'))
+    .catch((error) => {
+      if (error && error.name === 'AbortError') return;
+      if (requestId !== draftSaveRequestId) return;
+      console.warn('Draft save failed:', getErrorMessage(error, 'Unable to save draft.'));
+    });
 }
 
 function renderGroupItems(details) {
@@ -363,10 +371,9 @@ function savePage(options = {}) {
         method: 'POST',
         body: fd,
         signal: saveAbortController.signal,
-      }).then((r) => {
-        if (!r.ok) throw new Error('Save failed');
-        return r.text().then(() => targetKeys);
-      });
+      })
+        .then((response) => parseJsonResponse(response, 'Unable to save content'))
+        .then(() => targetKeys);
     })
     .then((targetKeys) => {
       if (requestId !== saveRequestId) return;
@@ -390,7 +397,7 @@ function savePage(options = {}) {
       if (error && error.name === 'AbortError') return;
       if (requestId !== saveRequestId) return;
       if (statusEl) {
-        statusEl.textContent = 'Error saving';
+        statusEl.textContent = getErrorMessage(error, 'Error saving');
         statusEl.classList.add('error');
         statusEl.classList.remove('saving');
       }
@@ -458,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
   previousSavedLinkTargets = new Set(collectLinkTargets(canvas.innerHTML).keys());
 
   fetch(getApiUrl(window.builderBase, 'load-draft', { id: window.builderPageId }))
-    .then((r) => (r.ok ? r.json() : null))
+    .then((response) => parseJsonResponse(response, 'Unable to load draft'))
     .then((serverDraft) => {
       if (serverDraft && serverDraft.timestamp > lastSavedTimestamp) {
         canvas.innerHTML = serverDraft.content;
@@ -469,7 +476,9 @@ document.addEventListener('DOMContentLoaded', () => {
         previousSavedLinkTargets = new Set(collectLinkTargets(canvas.innerHTML).keys());
       }
     })
-    .catch(() => {});
+    .catch((error) => {
+      console.warn('Load draft failed:', getErrorMessage(error, 'Unable to load draft.'));
+    });
 
   if (viewToggle) {
     viewToggle.addEventListener('click', () => {
@@ -492,17 +501,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function loadPaletteBlocks() {
     return fetch(getApiUrl(window.builderBase, 'list-blocks'))
-      .then((r) => {
-        if (!r.ok) {
-          throw new Error('Failed to load palette blocks');
-        }
-        return r.json();
-      })
+      .then((response) => parseJsonResponse(response, 'Failed to load palette blocks'))
       .then((data) => {
         allBlockFiles = data.blocks || [];
         renderPalette(palette, allBlockFiles);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.warn('Load palette blocks failed:', getErrorMessage(error, 'Failed to load palette blocks.'));
         allBlockFiles = [];
         renderPaletteUnavailableState(palette, loadPaletteBlocks);
       });
