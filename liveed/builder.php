@@ -25,6 +25,32 @@ if (substr($scriptBase, -7) === '/liveed') {
 }
 $themeBase = $scriptBase . '/theme';
 
+
+$allowCdnFallback = filter_var(getenv('LIVEED_ALLOW_CDN_FALLBACK') ?: '0', FILTER_VALIDATE_BOOLEAN);
+
+$assetTag = static function (string $type, string $url, ?string $integrity = null): string {
+    $attrs = $integrity ? ' integrity="' . htmlspecialchars($integrity, ENT_QUOTES) . '" crossorigin="anonymous" referrerpolicy="no-referrer"' : '';
+    if ($type === 'css') {
+        return '<link rel="stylesheet" href="' . htmlspecialchars($url, ENT_QUOTES) . '"' . $attrs . '>';
+    }
+
+    return '<script src="' . htmlspecialchars($url, ENT_QUOTES) . '"' . $attrs . '></script>';
+};
+
+$resolveAsset = static function (array $asset, string $scriptBase, bool $allowCdnFallback) use ($assetTag): string {
+    $localPath = __DIR__ . '/' . ltrim($asset['local'], '/');
+    if (is_file($localPath)) {
+        return $assetTag($asset['type'], $scriptBase . '/liveed/' . ltrim($asset['local'], '/'));
+    }
+
+    if ($allowCdnFallback && !empty($asset['cdn'])) {
+        return $assetTag($asset['type'], $asset['cdn'], $asset['integrity'] ?? null);
+    }
+
+    error_log('Builder asset missing and CDN fallback disabled: ' . $asset['local']);
+    return '';
+};
+
 // Load settings and menus for the theme template
 $settings = get_site_settings();
 $menusFile = __DIR__ . '/../CMS/data/menus.json';
@@ -83,7 +109,11 @@ $headInject = '';
 foreach ($cssFiles as $css) {
     $headInject .= "<link rel=\"stylesheet\" href=\"{$scriptBase}/liveed/css/$css\">";
 }
-$headInject .= "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css\"/>";
+$headInject .= $resolveAsset([
+    'type' => 'css',
+    'local' => 'vendor/fontawesome-6.4.2/css/all.min.css',
+    'cdn' => 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css',
+], $scriptBase, $allowCdnFallback);
 
 $builderHeader = '<header class="builder-header" title="Drag to reposition">'
     . '<div  class="title-top"><div class="title">Editing: ' . htmlspecialchars($page['title']) . '</div> '
@@ -116,14 +146,26 @@ $mediaPickerHtml = '<div id="mediaPickerModal" class="modal">'
     . '<button class="btn btn-secondary" id="pickerEditCancel"><i class="fa-solid fa-circle-xmark btn-icon" aria-hidden="true"></i><span class="btn-label">Cancel</span></button>'
     . '<button class="btn btn-primary" id="pickerEditSave"><i class="fa-solid fa-floppy-disk btn-icon" aria-hidden="true"></i><span class="btn-label">Save</span></button></div>'
     . '</div></div>'
-    . '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">'
-    . '<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>';
+    . $resolveAsset([
+        'type' => 'css',
+        'local' => 'vendor/cropperjs-1.5.12/cropper.min.css',
+        'cdn' => 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css',
+    ], $scriptBase, $allowCdnFallback)
+    . $resolveAsset([
+        'type' => 'js',
+        'local' => 'vendor/cropperjs-1.5.12/cropper.min.js',
+        'cdn' => 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js',
+    ], $scriptBase, $allowCdnFallback);
 
 $builderEnd = '</main><div id="settingsPanel" class="settings-panel"><div class="settings-header"><span class="title">Settings</span><button type="button" class="close-btn">&times;</button></div><div class="settings-content"></div></div>'
     . $mediaPickerHtml . '</div>'
     . '<script>window.builderPageId = ' . json_encode($page['id']) . ';window.builderBase = ' . json_encode($scriptBase) . ';window.builderSlug = ' . json_encode($page['slug']) . ';window.builderLastModified = ' . json_encode($page['last_modified']) . ';window.builderCsrfToken = ' . json_encode(csrf_token()) . ';window.builderConfig = Object.assign({}, window.builderConfig || {}, { csrfToken: window.builderCsrfToken });</script>'
     . '<script type="module" src="' . $scriptBase . '/liveed/builder.js"></script>'
-    . '<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>';
+    . $resolveAsset([
+        'type' => 'js',
+        'local' => 'vendor/jquery-3.6.0/jquery.min.js',
+        'cdn' => 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js',
+    ], $scriptBase, $allowCdnFallback);
 
 $slots = [
     'LIVEED_HEAD' => $headInject,
