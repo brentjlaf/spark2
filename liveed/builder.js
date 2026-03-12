@@ -162,6 +162,29 @@ function renderPalette(palette, files = []) {
     });
 }
 
+function renderPaletteUnavailableState(palette, retryHandler) {
+  const container = palette.querySelector('.palette-items');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const emptyState = document.createElement('div');
+  emptyState.className = 'palette-empty-state';
+
+  const message = document.createElement('p');
+  message.className = 'palette-empty-message';
+  message.textContent = 'Block palette is temporarily unavailable. You can keep editing and retry loading blocks.';
+
+  const retryBtn = document.createElement('button');
+  retryBtn.type = 'button';
+  retryBtn.className = 'palette-retry-btn';
+  retryBtn.textContent = 'Retry';
+  retryBtn.addEventListener('click', () => retryHandler());
+
+  emptyState.appendChild(message);
+  emptyState.appendChild(retryBtn);
+  container.appendChild(emptyState);
+}
+
 function toggleFavorite(file) {
   const idx = favorites.indexOf(file);
   if (idx >= 0) {
@@ -449,12 +472,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const searchInput = palette.querySelector('.palette-search');
 
-  fetch(getApiUrl(window.builderBase, 'list-blocks'))
-    .then((r) => r.json())
-    .then((data) => {
-      allBlockFiles = data.blocks || [];
-      renderPalette(palette, allBlockFiles);
-    });
+  function loadPaletteBlocks() {
+    return fetch(getApiUrl(window.builderBase, 'list-blocks'))
+      .then((r) => {
+        if (!r.ok) {
+          throw new Error('Failed to load palette blocks');
+        }
+        return r.json();
+      })
+      .then((data) => {
+        allBlockFiles = data.blocks || [];
+        renderPalette(palette, allBlockFiles);
+      })
+      .catch(() => {
+        allBlockFiles = [];
+        renderPaletteUnavailableState(palette, loadPaletteBlocks);
+      });
+  }
+
+  loadPaletteBlocks();
 
   if (searchInput) {
     searchInput.addEventListener('input', () => {
