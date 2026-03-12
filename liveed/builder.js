@@ -9,7 +9,7 @@ import { executeScripts } from "./modules/executeScripts.js";
 import { appendApiAction, getApiUrl } from './modules/api.js';
 
 let allBlockFiles = [];
-let favorites = [];
+let favorites = new Set();
 let builderDraftKey = '';
 let lastSavedTimestamp = 0;
 let saveRequestId = 0;
@@ -67,9 +67,9 @@ function renderGroupItems(details) {
     item.textContent = label;
     const favBtn = document.createElement('span');
     favBtn.className = 'fav-toggle';
-    if (favs.includes(it.file)) favBtn.classList.add('active');
+    if (favs.has(it.file)) favBtn.classList.add('active');
     favBtn.textContent = '★';
-    favBtn.title = favs.includes(it.file) ? 'Unfavorite' : 'Favorite';
+    favBtn.title = favs.has(it.file) ? 'Unfavorite' : 'Favorite';
     favBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       toggleFavorite(it.file);
@@ -125,7 +125,7 @@ function renderPalette(palette, files = []) {
 
   const favs = favorites;
   const groups = {};
-  if (favs.length) groups.Favorites = [];
+  if (favs.size) groups.Favorites = [];
   files.forEach((f) => {
     if (!f.endsWith('.php')) return;
     const base = f.replace(/\.php$/, '');
@@ -135,7 +135,7 @@ function renderPalette(palette, files = []) {
     if (!groups[group]) groups[group] = [];
     const info = { file: f, label };
     groups[group].push(info);
-    if (favs.includes(f)) {
+    if (favs.has(f)) {
       groups.Favorites.push(info);
     }
   });
@@ -186,13 +186,12 @@ function renderPaletteUnavailableState(palette, retryHandler) {
 }
 
 function toggleFavorite(file) {
-  const idx = favorites.indexOf(file);
-  if (idx >= 0) {
-    favorites.splice(idx, 1);
+  if (favorites.has(file)) {
+    favorites.delete(file);
   } else {
-    favorites.push(file);
+    favorites.add(file);
   }
-  localStorage.setItem('favoriteBlocks', JSON.stringify(favorites));
+  localStorage.setItem('favoriteBlocks', JSON.stringify([...favorites]));
   if (paletteEl) renderPalette(paletteEl, allBlockFiles);
 }
 
@@ -465,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  favorites = JSON.parse(localStorage.getItem('favoriteBlocks') || '[]');
+  favorites = new Set(JSON.parse(localStorage.getItem('favoriteBlocks') || '[]'));
 
 
   initSettings({ canvas, settingsPanel, savePage: scheduleSave });
