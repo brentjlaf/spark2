@@ -3,6 +3,11 @@
 require_once __DIR__ . '/../CMS/includes/auth.php';
 require_login();
 
+$requestMethod = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+if (!in_array($requestMethod, ['GET', 'HEAD', 'OPTIONS'], true)) {
+    verify_csrf_token();
+}
+
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 switch ($action) {

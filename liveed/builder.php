@@ -121,7 +121,7 @@ $mediaPickerHtml = '<div id="mediaPickerModal" class="modal">'
 
 $builderEnd = '</main><div id="settingsPanel" class="settings-panel"><div class="settings-header"><span class="title">Settings</span><button type="button" class="close-btn">&times;</button></div><div class="settings-content"></div></div>'
     . $mediaPickerHtml . '</div>'
-    . '<script>window.builderPageId = ' . json_encode($page['id']) . ';window.builderBase = ' . json_encode($scriptBase) . ';window.builderSlug = ' . json_encode($page['slug']) . ';window.builderLastModified = ' . json_encode($page['last_modified']) . ';</script>'
+    . '<script>window.builderPageId = ' . json_encode($page['id']) . ';window.builderBase = ' . json_encode($scriptBase) . ';window.builderSlug = ' . json_encode($page['slug']) . ';window.builderLastModified = ' . json_encode($page['last_modified']) . ';window.builderCsrfToken = ' . json_encode(csrf_token()) . ';window.builderConfig = Object.assign({}, window.builderConfig || {}, { csrfToken: window.builderCsrfToken });</script>'
     . '<script type="module" src="' . $scriptBase . '/liveed/builder.js"></script>'
     . '<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>';
 
