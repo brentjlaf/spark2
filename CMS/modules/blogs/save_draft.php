@@ -37,12 +37,27 @@ $draft = [
   'saved_by'    => $_SESSION['user']['username'] ?? 'unknown',
 ];
 
-$draftDir = __DIR__ . '/../../data/drafts';
-if (!is_dir($draftDir)) {
-  mkdir($draftDir, 0777, true);
+$draftFile = __DIR__ . '/../../data/blog_drafts.json';
+$drafts = read_json_file($draftFile);
+if (!is_array($drafts)) {
+  $drafts = [];
 }
 
-$draftFile = $draftDir . '/blog_' . $id . '.json';
-write_json_file($draftFile, $draft);
+$updated = false;
+foreach ($drafts as &$existing) {
+  if ((int)($existing['post_id'] ?? 0) !== $id) {
+    continue;
+  }
+  $existing = array_merge($draft, ['post_id' => $id]);
+  $updated = true;
+  break;
+}
+unset($existing);
+
+if (!$updated) {
+  $drafts[] = array_merge($draft, ['post_id' => $id]);
+}
+
+write_json_file($draftFile, array_values($drafts));
 
 echo json_encode(['status' => 'success', 'saved_at' => $draft['saved_at']]);

@@ -12,13 +12,20 @@ if ($id <= 0) {
   exit;
 }
 
-$draftFile = __DIR__ . '/../../data/drafts/page_' . $id . '.json';
-if (!file_exists($draftFile)) {
-  echo json_encode(['status' => 'none']);
-  exit;
+$draftFile = __DIR__ . '/../../data/page_drafts.json';
+$drafts = read_json_file($draftFile);
+if (!is_array($drafts)) {
+  $drafts = [];
 }
 
-$draft = read_json_file($draftFile);
+$draft = null;
+foreach ($drafts as $candidate) {
+  if ((int)($candidate['page_id'] ?? 0) === $id) {
+    $draft = $candidate;
+    break;
+  }
+}
+
 if (!is_array($draft) || !isset($draft['saved_at'])) {
   echo json_encode(['status' => 'none']);
   exit;

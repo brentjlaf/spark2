@@ -34,9 +34,8 @@ function ensure_schema_table(array $schema): void
         $columns = is_array($schema['columns'] ?? null) ? $schema['columns'] : [];
         $indexes = is_array($schema['indexes'] ?? null) ? $schema['indexes'] : [];
 
-        // Prefer numeric auto-increment IDs for core content tables; fall back to varchar for flexible IDs.
-        $numericIdTables = ['cms_pages', 'cms_menus', 'cms_blog_posts', 'cms_forms', 'cms_users', 'cms_speed_snapshots'];
-        $isNumericId = $primary === 'id' && in_array($table, $numericIdTables, true);
+        // Prefer numeric primary keys for conventional id/*_id entities.
+        $isNumericId = $primary === 'id' || str_ends_with($primary, '_id');
         $primaryType = $isNumericId ? 'INT' : 'VARCHAR(191)';
         $primaryExtras = $isNumericId ? 'AUTO_INCREMENT' : '';
 
