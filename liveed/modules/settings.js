@@ -314,6 +314,92 @@ function validateSettings() {
   return valid;
 }
 
+function syncAttributes(target, source) {
+  let changed = false;
+  const sourceAttrs = new Set();
+  Array.from(source.attributes).forEach((attr) => {
+    sourceAttrs.add(attr.name);
+    if (target.getAttribute(attr.name) !== attr.value) {
+      target.setAttribute(attr.name, attr.value);
+      changed = true;
+    }
+  });
+  Array.from(target.attributes).forEach((attr) => {
+    if (!sourceAttrs.has(attr.name)) {
+      target.removeAttribute(attr.name);
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+function canPatchNode(targetNode, sourceNode) {
+  if (!targetNode || !sourceNode) return false;
+  if (targetNode.nodeType !== sourceNode.nodeType) return false;
+  if (targetNode.nodeType === Node.ELEMENT_NODE) {
+    return targetNode.tagName === sourceNode.tagName;
+  }
+  return true;
+}
+
+function patchNode(targetNode, sourceNode) {
+  let structureChanged = false;
+  if (targetNode.nodeType === Node.TEXT_NODE || targetNode.nodeType === Node.COMMENT_NODE) {
+    if (targetNode.nodeValue !== sourceNode.nodeValue) {
+      targetNode.nodeValue = sourceNode.nodeValue;
+    }
+    return structureChanged;
+  }
+
+  syncAttributes(targetNode, sourceNode);
+
+  const targetChildren = Array.from(targetNode.childNodes);
+  const sourceChildren = Array.from(sourceNode.childNodes);
+  const maxLen = Math.max(targetChildren.length, sourceChildren.length);
+  for (let i = 0; i < maxLen; i += 1) {
+    const targetChild = targetChildren[i];
+    const sourceChild = sourceChildren[i];
+    if (!targetChild && sourceChild) {
+      targetNode.appendChild(sourceChild.cloneNode(true));
+      structureChanged = true;
+      continue;
+    }
+    if (targetChild && !sourceChild) {
+      targetChild.remove();
+      structureChanged = true;
+      continue;
+    }
+    if (!canPatchNode(targetChild, sourceChild)) {
+      targetNode.replaceChild(sourceChild.cloneNode(true), targetChild);
+      structureChanged = true;
+      continue;
+    }
+    structureChanged = patchNode(targetChild, sourceChild) || structureChanged;
+  }
+
+  return structureChanged;
+}
+
+function ensureOutputContainer(block) {
+  let container = block.querySelector(':scope > [data-block-output="true"]');
+  if (container) return { container, structureChanged: false };
+
+  container = document.createElement('div');
+  container.setAttribute('data-block-output', 'true');
+  container.className = 'block-output';
+
+  const controls = block.querySelector(':scope > .block-controls');
+  const nodesToMove = Array.from(block.childNodes).filter((node) => node !== controls);
+  nodesToMove.forEach((node) => container.appendChild(node));
+
+  if (controls) {
+    block.insertBefore(container, controls);
+  } else {
+    block.appendChild(container);
+  }
+  return { container, structureChanged: true };
+}
+
 function renderBlock(block) {
   ensureBlockState(block);
   const settings = getSettings(block);
@@ -342,7 +428,8 @@ function renderBlock(block) {
     html = html.split('{' + name + '}').join(value);
   });
   html = html.replace(/<templateSetting[^>]*>[\s\S]*?<\/templateSetting>/i, '');
-  const existingAreas = Array.from(block.querySelectorAll('.drop-area')).map((a) => Array.from(a.childNodes));
+  const { container: outputContainer, structureChanged: containerWrapped } = ensureOutputContainer(block);
+  const existingAreas = Array.from(outputContainer.querySelectorAll('.drop-area')).map((a) => Array.from(a.childNodes));
   const temp = document.createElement('div');
   temp.innerHTML = html;
   const newAreas = temp.querySelectorAll('.drop-area');
@@ -350,28 +437,32 @@ function renderBlock(block) {
     const contents = existingAreas[i];
     if (contents) contents.forEach((n) => area.appendChild(n));
   });
-  block.innerHTML = temp.innerHTML;
-  executeScripts(block, { blockType: block.dataset.template ? block.dataset.template.replace(/\.php$/, '') : undefined });
-  block.querySelectorAll('.drop-area').forEach((a) => (a.dataset.dropArea = 'true'));
+  const structureChanged = patchNode(outputContainer, temp) || containerWrapped;
+  if (structureChanged) {
+    executeScripts(outputContainer, { blockType: block.dataset.template ? block.dataset.template.replace(/\.php$/, '') : undefined });
+  }
+  outputContainer.querySelectorAll('.drop-area').forEach((a) => (a.dataset.dropArea = 'true'));
   inputs.forEach((input) => {
     const name = input.name;
     const value = settings[name];
-    block.querySelectorAll('toggle[rel="' + name + '"]').forEach((tog) => {
+    outputContainer.querySelectorAll('toggle[rel="' + name + '"]').forEach((tog) => {
       const match = tog.getAttribute('value') === value;
       tog.dataset.active = match ? 'true' : 'false';
       tog.style.display = match ? '' : 'none';
     });
     if (name === 'custom_src') {
-      block.querySelectorAll('img').forEach((img) => {
+      outputContainer.querySelectorAll('img').forEach((img) => {
         img.setAttribute('src', value);
       });
     }
     if (name === 'custom_alt') {
-      block.querySelectorAll('img').forEach((img) => {
+      outputContainer.querySelectorAll('img').forEach((img) => {
         img.setAttribute('alt', value);
       });
     }
   });
+
+  return { structureChanged };
 }
 
 function applySettings(template, block) {
@@ -393,6 +484,6 @@ function applySettings(template, block) {
     processed.add(name);
     setSetting(block, name, value);
   });
-  renderBlock(block);
-  addBlockControls(block);
+  const { structureChanged } = renderBlock(block);
+  if (structureChanged) addBlockControls(block);
 }
