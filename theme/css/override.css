@@ -1,0 +1,554 @@
+/* File: override.css */
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family-sans-serif);
+  line-height: 1.65;
+  color: #1e293b;
+  background-color: #f8fafc;
+  font-size: var(--font-size);
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--primary-5);
+}
+
+a,
+button,
+[role="button"] {
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.5);
+  outline-offset: 3px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Page Template */
+.page-template {
+  min-height: 100vh;
+  /* display: flex; */
+  flex-direction: column;
+}
+
+/* ----------------------------------------
+   Header
+---------------------------------------- */
+.site-header {
+  background: #0f172a;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 8px rgba(0, 0, 0, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.95rem 24px;
+  position: relative;
+}
+
+.logo img {
+  height: 46px;
+  width: auto;
+  filter: brightness(0) invert(1);
+  transition: opacity 0.2s ease;
+}
+
+.logo:hover img {
+  opacity: 0.8;
+}
+
+/* ----------------------------------------
+   Navigation
+---------------------------------------- */
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.main-nav ul {
+  display: flex;
+  list-style: none;
+  gap: 0.125rem;
+}
+
+.main-nav li {
+  position: relative;
+}
+
+.main-nav a {
+  color: #94a3b8;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.55rem 0.85rem;
+  border-radius: 6px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  display: block;
+  font-size: 0.9rem;
+  letter-spacing: 0.01em;
+}
+
+.main-nav a:hover,
+.main-nav a:focus-visible {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.main-nav a:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.25);
+  outline-offset: 2px;
+}
+
+/* Dropdown Menu */
+.main-nav ul ul {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: #ffffff;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 10px 24px -4px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  padding: 0.375rem 0;
+  min-width: 210px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+}
+
+.main-nav li:hover ul {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.main-nav ul ul a {
+  color: #334155;
+  padding: 0.55rem 1.25rem;
+  border-radius: 0;
+  font-size: 0.875rem;
+}
+
+.main-nav ul ul a:hover {
+  background: #f1f5f9;
+  color: var(--primary);
+}
+
+/* CTA Button */
+.cta-btn {
+  background: var(--primary);
+  color: #ffffff;
+  padding: 0.6rem 1.5rem;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+}
+
+.cta-btn:hover,
+.cta-btn:focus-visible {
+  background: var(--primary-5);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  color: #ffffff;
+}
+
+.cta-btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 2px;
+}
+
+/* Mobile Menu Toggle */
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.375rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.nav-toggle:hover,
+.nav-toggle:focus-visible {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nav-toggle:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.25);
+  outline-offset: 2px;
+}
+
+/* ----------------------------------------
+   Header Search
+---------------------------------------- */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.search-box {
+  position: relative;
+}
+
+.search-input {
+  padding: 0.475rem 2.25rem 0.475rem 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  width: 196px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.search-input::placeholder {
+  color: #64748b;
+}
+
+.search-input:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.25);
+  outline-offset: 2px;
+}
+
+.search-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--primary-3);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.search-icon {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+/* ----------------------------------------
+   Main Content
+---------------------------------------- */
+#main-area {
+  /* flex: 1; */
+}
+
+.block-wrapper {
+  margin-bottom: 2.5rem;
+}
+
+._content-style {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.heading-text {
+  font-size: 2.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 1.5rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+/* ----------------------------------------
+   Footer
+---------------------------------------- */
+.site-footer {
+  background: #0f172a;
+  color: #94a3b8;
+  margin-top: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.footer-main {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 2rem;
+  align-items: center;
+  padding: 2.25rem 20px;
+}
+
+.footer-menu ul {
+  display: flex;
+  list-style: none;
+  gap: 1.75rem;
+  justify-content: center;
+}
+
+.footer-menu a {
+  color: #64748b;
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: color 0.2s ease;
+}
+
+.footer-menu a:hover {
+  color: #e2e8f0;
+}
+
+.footer-social {
+  display: flex;
+  gap: 0.625rem;
+  justify-content: flex-end;
+}
+
+.footer-social a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #64748b;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.footer-social a:hover {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.footer-copy {
+  text-align: center;
+  padding: 1.125rem 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: #475569;
+  font-size: 0.8125rem;
+}
+
+/* ----------------------------------------
+   Back to Top Button
+---------------------------------------- */
+#back-to-top-btn {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  width: 42px;
+  height: 42px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  z-index: 999;
+}
+
+#back-to-top-btn:hover {
+  background: var(--primary-5);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+  transform: translateY(-2px);
+}
+
+#back-to-top-btn span:last-child {
+  display: none;
+}
+
+/* ----------------------------------------
+   Responsive Design
+---------------------------------------- */
+@media (max-width: 768px) {
+  .header-inner {
+    padding: 0.875rem 20px;
+  }
+
+  .nav-toggle {
+    display: block;
+  }
+
+  .main-nav {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1e293b;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    flex-direction: column;
+    align-items: stretch;
+    transform: translateY(-8px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+  }
+
+  .main-nav.active {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .main-nav ul {
+    flex-direction: column;
+    gap: 0;
+    padding: 0.75rem 0;
+  }
+
+  .nav-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.625rem;
+    padding: 0 1.25rem 1.25rem;
+  }
+
+  .search-box {
+    margin-left: 0;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .main-nav ul ul {
+    position: static;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    background: rgba(255, 255, 255, 0.04);
+    border: none;
+    box-shadow: none;
+    margin-left: 1rem;
+    border-radius: 4px;
+  }
+
+  .cta-btn {
+    display: none;
+  }
+
+  .heading-text {
+    font-size: 2.125rem;
+  }
+
+  .footer-main {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 1.5rem;
+  }
+
+  .footer-menu ul {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.25rem;
+  }
+
+  .footer-social {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 15px;
+  }
+
+  .heading-text {
+    font-size: 1.75rem;
+  }
+
+  #back-to-top-btn {
+    width: 38px;
+    height: 38px;
+    bottom: 20px;
+    right: 20px;
+  }
+}
+
+/* ----------------------------------------
+   Smooth Scrolling
+---------------------------------------- */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ----------------------------------------
+   Loading Animation
+---------------------------------------- */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.block-wrapper {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+/* ----------------------------------------
+   Focus Styles for Accessibility
+---------------------------------------- */
+a:focus,
+button:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.5);
+  outline-offset: 2px;
+}
