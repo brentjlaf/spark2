@@ -12,6 +12,10 @@ let allBlockFiles = [];
 let favorites = [];
 let builderDraftKey = '';
 let lastSavedTimestamp = 0;
+let saveRequestId = 0;
+let saveAbortController = null;
+let draftSaveRequestId = 0;
+let draftSaveAbortController = null;
 let canvas;
 let paletteEl;
 // Delay before auto-saving after a change. A longer delay prevents rapid
@@ -29,10 +33,21 @@ function storeDraft() {
   fd.append('content', data.html);
   fd.append('timestamp', data.timestamp);
   appendApiAction(fd, 'save-draft');
+
+  if (draftSaveAbortController) {
+    draftSaveAbortController.abort();
+  }
+  const requestId = ++draftSaveRequestId;
+  draftSaveAbortController = new AbortController();
+
   fetch(getApiUrl(window.builderBase, 'save-draft'), {
     method: 'POST',
     body: fd,
-  }).catch(() => {});
+    signal: draftSaveAbortController.signal,
+  }).catch((error) => {
+    if (error && error.name === 'AbortError') return;
+    if (requestId !== draftSaveRequestId) return;
+  });
 }
 
 function renderGroupItems(details) {
@@ -266,10 +281,11 @@ function checkLinks(html, options = {}) {
 }
 
 function savePage(options = {}) {
-  const { skipLinkChecks = false } = options;
+  const { skipLinkChecks = false, isAutoSave = false } = options;
   if (!canvas) return;
   const statusEl = document.getElementById('saveStatus');
   const html = canvas.innerHTML;
+  const requestId = ++saveRequestId;
 
   if (statusEl) {
     statusEl.textContent = skipLinkChecks || !linkCheckEnabled ? 'Saving...' : 'Checking links...';
@@ -300,16 +316,23 @@ function savePage(options = {}) {
 
       if (statusEl) statusEl.textContent = 'Saving...';
 
+      if (isAutoSave && saveAbortController) {
+        saveAbortController.abort();
+      }
+      saveAbortController = new AbortController();
+
       appendApiAction(fd, 'save-content');
       return fetch(getApiUrl(window.builderBase, 'save-content'), {
         method: 'POST',
         body: fd,
+        signal: saveAbortController.signal,
       }).then((r) => {
         if (!r.ok) throw new Error('Save failed');
         return r.text().then(() => targetKeys);
       });
     })
     .then((targetKeys) => {
+      if (requestId !== saveRequestId) return;
       previousSavedLinkTargets = new Set(targetKeys);
       localStorage.removeItem(builderDraftKey);
       lastSavedTimestamp = Date.now();
@@ -326,7 +349,9 @@ function savePage(options = {}) {
         if (statusEl && statusEl.textContent === 'Saved') statusEl.textContent = '';
       }, 2000);
     })
-    .catch(() => {
+    .catch((error) => {
+      if (error && error.name === 'AbortError') return;
+      if (requestId !== saveRequestId) return;
       if (statusEl) {
         statusEl.textContent = 'Error saving';
         statusEl.classList.add('error');
@@ -350,7 +375,7 @@ function checkSeo(html) {
 function scheduleSave() {
   clearTimeout(saveTimer);
   storeDraft();
-  saveTimer = setTimeout(() => savePage(), SAVE_DEBOUNCE_DELAY);
+  saveTimer = setTimeout(() => savePage({ isAutoSave: true }), SAVE_DEBOUNCE_DELAY);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
