@@ -188,6 +188,20 @@ function cms_entity_schemas(): array
             'indexes' => ['captured_at'],
             'description' => 'Performance snapshots.',
         ],
+        'commerce.json' => [
+            'table' => 'cms_commerce_products',
+            'primary' => 'id',
+            'json_column' => 'payload',
+            'columns' => [
+                'slug' => 'slug',
+                'sku' => 'sku',
+                'status' => 'status',
+                'category' => 'category',
+                'updated_at' => 'updated_at',
+            ],
+            'indexes' => ['slug', 'sku', 'status', 'category', 'updated_at'],
+            'description' => 'Commerce catalog products, inventory, pricing, and status metadata.',
+        ],
     ];
 }
 
