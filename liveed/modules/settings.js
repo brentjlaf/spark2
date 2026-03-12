@@ -389,6 +389,88 @@ function getTemplateRenderer(block, templateSource) {
   return render;
 }
 
+function ensureRenderRoot(block) {
+  let renderRoot = block.querySelector(':scope > .block-render-root');
+  if (renderRoot) return renderRoot;
+
+  renderRoot = document.createElement('div');
+  renderRoot.className = 'block-render-root';
+
+  const nodesToMove = Array.from(block.childNodes).filter((node) => {
+    return !(node.nodeType === Node.ELEMENT_NODE && node.classList.contains('block-controls'));
+  });
+  nodesToMove.forEach((node) => renderRoot.appendChild(node));
+  block.insertBefore(renderRoot, block.firstChild);
+  return renderRoot;
+}
+
+function syncAttributes(fromEl, toEl) {
+  Array.from(toEl.attributes).forEach((attr) => {
+    if (!fromEl.hasAttribute(attr.name)) {
+      toEl.removeAttribute(attr.name);
+    }
+  });
+
+  Array.from(fromEl.attributes).forEach((attr) => {
+    if (toEl.getAttribute(attr.name) !== attr.value) {
+      toEl.setAttribute(attr.name, attr.value);
+    }
+  });
+}
+
+function patchDomTree(targetNode, sourceNode) {
+  if (!targetNode || !sourceNode) {
+    return { changed: false, structureChanged: false };
+  }
+  if (targetNode.nodeType !== sourceNode.nodeType) {
+    targetNode.replaceWith(sourceNode.cloneNode(true));
+    return { changed: true, structureChanged: true };
+  }
+
+  if (targetNode.nodeType === Node.TEXT_NODE) {
+    if (targetNode.textContent !== sourceNode.textContent) {
+      targetNode.textContent = sourceNode.textContent;
+      return { changed: true, structureChanged: false };
+    }
+    return { changed: false, structureChanged: false };
+  }
+
+  if (targetNode.nodeName !== sourceNode.nodeName) {
+    targetNode.replaceWith(sourceNode.cloneNode(true));
+    return { changed: true, structureChanged: true };
+  }
+
+  syncAttributes(sourceNode, targetNode);
+
+  let changed = false;
+  let structureChanged = false;
+  const targetChildren = Array.from(targetNode.childNodes);
+  const sourceChildren = Array.from(sourceNode.childNodes);
+  const max = Math.max(targetChildren.length, sourceChildren.length);
+
+  for (let i = 0; i < max; i++) {
+    const tChild = targetChildren[i];
+    const sChild = sourceChildren[i];
+    if (!tChild && sChild) {
+      targetNode.appendChild(sChild.cloneNode(true));
+      changed = true;
+      structureChanged = true;
+      continue;
+    }
+    if (tChild && !sChild) {
+      tChild.remove();
+      changed = true;
+      structureChanged = true;
+      continue;
+    }
+    const patchResult = patchDomTree(tChild, sChild);
+    if (patchResult.changed) changed = true;
+    if (patchResult.structureChanged) structureChanged = true;
+  }
+
+  return { changed, structureChanged };
+}
+
 function renderBlock(block) {
   ensureBlockState(block);
   const settings = getSettings(block);
@@ -419,7 +501,8 @@ function renderBlock(block) {
   });
   const render = getTemplateRenderer(block, templateHtml);
   const html = render(renderValues);
-  const existingAreas = Array.from(block.querySelectorAll('.drop-area')).map((a) => Array.from(a.childNodes));
+  const renderRoot = ensureRenderRoot(block);
+  const existingAreas = Array.from(renderRoot.querySelectorAll('.drop-area')).map((a) => Array.from(a.childNodes));
   const temp = document.createElement('div');
   temp.innerHTML = html;
   const newAreas = temp.querySelectorAll('.drop-area');
@@ -427,9 +510,17 @@ function renderBlock(block) {
     const contents = existingAreas[i];
     if (contents) contents.forEach((n) => area.appendChild(n));
   });
-  block.innerHTML = temp.innerHTML;
-  executeScripts(block, { blockType: block.dataset.template ? block.dataset.template.replace(/\.php$/, '') : undefined });
-  block.querySelectorAll('.drop-area').forEach((a) => (a.dataset.dropArea = 'true'));
+
+  const patchTarget = document.createElement('div');
+  patchTarget.innerHTML = temp.innerHTML;
+  const patchResult = patchDomTree(renderRoot, patchTarget);
+
+  if (patchResult.structureChanged) {
+    executeScripts(block, {
+      blockType: block.dataset.template ? block.dataset.template.replace(/\.php$/, '') : undefined,
+    });
+  }
+  renderRoot.querySelectorAll('.drop-area').forEach((a) => (a.dataset.dropArea = 'true'));
   inputs.forEach((input) => {
     const name = input.name;
     const value = settings[name];
