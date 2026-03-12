@@ -1,0 +1,331 @@
+[
+  {
+    "id": 20,
+    "version": "1.3.0",
+    "date": "2026-03-09",
+    "title": "Commerce Module",
+    "category": "feature",
+    "module": "commerce",
+    "description": "Complete product catalog management with inventory tracking, multi-tier pricing (price, compare price, cost), SKU & slug management, stock quantity control, status workflows (active / inactive / draft), bulk activate/deactivate/delete, an add/edit modal, and a full REST API endpoint at /api/v1/commerce.",
+    "benefit": "Manage your entire product catalog from the admin panel — no external tools required. Track live inventory, set sale pricing, and control exactly what customers see, all in one unified place.",
+    "usage": [
+      "Open Commerce from the Content section of the sidebar.",
+      "Click Add Product and fill in name, SKU, price and status.",
+      "Enable Track stock to deduct quantity as orders come in.",
+      "Use the bulk action bar to activate or deactivate multiple products at once.",
+      "Query products from the REST API using GET /api/v1/commerce (public endpoint returns active products only; a write key unlocks all statuses)."
+    ],
+    "tags": ["commerce", "products", "ecommerce", "inventory", "api"]
+  },
+  {
+    "id": 18,
+    "version": "1.3.0",
+    "date": "2026-03-09",
+    "title": "Activity Audit Log",
+    "category": "feature",
+    "module": "logs",
+    "description": "Full per-user audit trail that records who changed what, when, and across which module. Events from page edits, blog posts (create, update, publish, delete, bulk actions), and commerce operations are now captured in data/audit_log.json alongside the existing page-history feed. The Logs dashboard merges both sources into one unified timeline with a new Context column, colour-coded context badges (Pages, Posts, Media, Users, Settings, Commerce, System), context filter pills, and a search bar.",
+    "benefit": "Know exactly which team member changed what and when — across every content type, not just pages. Quickly audit suspicious changes, support compliance requirements, and onboard new editors with a clear activity history.",
+    "usage": [
+      "Open Logs from the System section of the sidebar.",
+      "Use the context filter pills (Pages, Posts, Commerce, etc.) to narrow the feed.",
+      "Type in the Search logs field to find a specific editor, subject or action.",
+      "Use the View activity by dropdown to see a single editor's history.",
+      "Click Refresh to pull the latest events without reloading the page."
+    ],
+    "tags": ["logs", "audit", "history", "security", "compliance"]
+  },
+  {
+    "id": 17,
+    "version": "1.2.0",
+    "date": "2026-03-01",
+    "title": "Full-Text Search",
+    "category": "feature",
+    "module": "search",
+    "description": "MySQL-backed full-text search index (cms_search_index table with FULLTEXT KEY on title and body) covering both pages and blog posts. When a database is configured, search uses boolean-mode MATCH … AGAINST with wildcard suffix matching for partial words. If no database is present the system transparently falls back to the existing in-memory JSON scorer. A rebuild endpoint at modules/search/rebuild_index.php re-indexes all existing content on demand.",
+    "benefit": "Visitors and editors get fast, relevant results even on large sites — partial word matches, relevance ranking, and cross-content-type results out of the box, with zero configuration beyond connecting a database.",
+    "usage": [
+      "If using a database, search is active automatically — no setup needed.",
+      "To re-index existing content, visit Search in the sidebar and click Rebuild Index.",
+      "The global search bar in the admin top bar searches across pages and posts simultaneously.",
+      "Without a database the in-memory fallback still works for smaller sites."
+    ],
+    "tags": ["search", "fulltext", "mysql", "performance"]
+  },
+  {
+    "id": 16,
+    "version": "1.2.0",
+    "date": "2026-03-01",
+    "title": "Sitemap Auto-Regeneration",
+    "category": "improvement",
+    "module": "sitemap",
+    "description": "sitemap.xml is now automatically rebuilt whenever a page or blog post is saved, published, scheduled, or deleted. A new includes/sitemap_helpers.php provides sparkcms_regenerate_sitemap() — a clean helper that writes the XML without producing HTTP output, fixing the previous broken require_once approach. Blog posts with status 'published' are now correctly included in the sitemap alongside pages.",
+    "benefit": "Search engines always receive an up-to-date sitemap the moment content changes, without any manual steps. Freshly published posts appear in search results faster.",
+    "usage": [
+      "Nothing to configure — sitemap.xml updates automatically on every save or publish.",
+      "The sitemap includes all published pages and blog posts with their last-modified dates.",
+      "To manually regenerate, open Sitemap in the sidebar and click Generate.",
+      "The sitemap is located at /sitemap.xml relative to your site root."
+    ],
+    "tags": ["sitemap", "seo", "automation", "publishing"]
+  },
+  {
+    "id": 15,
+    "version": "1.2.0",
+    "date": "2026-03-01",
+    "title": "Asset Cache-Busting",
+    "category": "improvement",
+    "module": "settings",
+    "description": "All admin CSS and JavaScript assets now carry a ?v=<hex-mtime> query string derived from the file's modification time using filemtime(). Module JS files loaded dynamically via $.getScript() receive their version from a PHP-generated window.SPARKCMS_ASSET_VERSIONS object injected into the page, covering all 19 modules.",
+    "benefit": "Browsers always load the latest admin styles and scripts after an update — no more clearing caches or seeing stale interfaces after a CMS upgrade.",
+    "usage": [
+      "Cache-busting is fully automatic — no action required.",
+      "After updating any module's JS or CSS, the query string updates immediately on next page load.",
+      "The version hash is derived from the file's last-modified timestamp, not a build step."
+    ],
+    "tags": ["performance", "caching", "assets", "browser"]
+  },
+  {
+    "id": 12,
+    "version": "1.1.0",
+    "date": "2026-02-15",
+    "title": "Accessibility Checker",
+    "category": "feature",
+    "module": "accessibility",
+    "description": "Admin panel section that audits your site's pages for common accessibility issues — missing alt text, low contrast ratios, missing landmark regions, improper heading hierarchy, and missing form labels. Results are grouped by severity (critical, warning, info) with actionable remediation guidance for each issue.",
+    "benefit": "Meet WCAG 2.1 AA standards and avoid legal risk from accessibility lawsuits — without needing a third-party audit tool. Fix issues directly from the admin panel.",
+    "usage": [
+      "Open Accessibility from the System section of the sidebar.",
+      "Select a page to audit from the dropdown and click Run Audit.",
+      "Review issues by severity — Critical items should be fixed first.",
+      "Follow the in-panel guidance for each issue to resolve it."
+    ],
+    "tags": ["accessibility", "wcag", "compliance", "audit"]
+  },
+  {
+    "id": 11,
+    "version": "1.1.0",
+    "date": "2026-02-15",
+    "title": "Performance Monitor",
+    "category": "feature",
+    "module": "speed",
+    "description": "Page speed analysis dashboard that reports Core Web Vitals proxies (LCP, CLS, FID indicators), asset size breakdown, image optimisation opportunities, render-blocking resource detection, and cache-control header status for each page.",
+    "benefit": "Identify performance bottlenecks before they impact rankings or user experience. Prioritise what to fix with severity-graded recommendations directly in the admin panel.",
+    "usage": [
+      "Open Performance from the System section of the sidebar.",
+      "Enter or select a page URL and click Analyse.",
+      "Review the Opportunities list — each item includes an estimated saving.",
+      "Address high-impact items first (LCP, render-blocking scripts)."
+    ],
+    "tags": ["performance", "speed", "core web vitals", "seo"]
+  },
+  {
+    "id": 10,
+    "version": "1.1.0",
+    "date": "2026-02-15",
+    "title": "SEO Toolkit",
+    "category": "feature",
+    "module": "seo",
+    "description": "Per-page SEO analysis covering title tag length, meta description quality, keyword density, Open Graph tags, canonical URL, structured data presence, and internal/external link counts. Provides a composite SEO score and actionable checklist for each page.",
+    "benefit": "Improve organic search rankings by fixing on-page SEO issues before publishing. See exactly which pages need attention without a third-party SEO subscription.",
+    "usage": [
+      "Open SEO from the System section of the sidebar.",
+      "Select a page from the dropdown to analyse it.",
+      "Work through the checklist items from highest to lowest impact.",
+      "Re-run the analysis after making changes to see your updated score."
+    ],
+    "tags": ["seo", "meta", "open graph", "rankings"]
+  },
+  {
+    "id": 9,
+    "version": "1.1.0",
+    "date": "2026-02-15",
+    "title": "Analytics Dashboard",
+    "category": "feature",
+    "module": "analytics",
+    "description": "Built-in traffic analytics dashboard tracking page views, unique visitors, referrer sources, top pages, and session duration over configurable time periods (7 days, 30 days, 90 days). Data is stored in the CMS data layer — no external analytics script required for basic reporting.",
+    "benefit": "Understand what content resonates with your audience without sharing visitor data with third parties. Spot traffic trends and high-performing pages right inside the admin.",
+    "usage": [
+      "Open Analytics from the System section of the sidebar.",
+      "Use the period selector to switch between 7-day, 30-day, and 90-day views.",
+      "Review the Top Pages table to find your most visited content.",
+      "Monitor the Referrers section to see where traffic is coming from."
+    ],
+    "tags": ["analytics", "traffic", "reporting", "visitors"]
+  },
+  {
+    "id": 8,
+    "version": "1.0.0",
+    "date": "2026-01-20",
+    "title": "User Management",
+    "category": "feature",
+    "module": "users",
+    "description": "Admin-only panel to create, edit, and deactivate user accounts. Supports two roles — Admin (full access) and Editor (content-only access). Password hashing uses PHP's password_hash() with bcrypt. Session management includes automatic timeout and CSRF token protection on all state-changing requests.",
+    "benefit": "Give team members only the access they need — editors can manage content, but cannot access users, settings, or system tools. Admins retain full control.",
+    "usage": [
+      "Open Users from the Administration section (Admin role required).",
+      "Click Add User to create a new team member account.",
+      "Assign the Editor role for content-only access, or Admin for full access.",
+      "Deactivate accounts instead of deleting to preserve audit history."
+    ],
+    "tags": ["users", "roles", "access control", "security", "admin"]
+  },
+  {
+    "id": 7,
+    "version": "1.0.0",
+    "date": "2026-01-20",
+    "title": "Site Settings",
+    "category": "feature",
+    "module": "settings",
+    "description": "Central configuration panel for site name, logo, favicon, base URL, timezone, contact email, social media links, and API key management. API keys support granular permissions (read, write, delete) and can be revoked individually.",
+    "benefit": "Control every global site configuration from one place — no config file editing required. Generate and revoke API keys for headless or third-party integrations without touching code.",
+    "usage": [
+      "Open Settings from the Administration section (Admin role required).",
+      "Update site name and branding in the General tab.",
+      "Generate API keys in the API Keys tab — assign only the permissions each integration needs.",
+      "Revoke keys immediately from the same panel if compromised."
+    ],
+    "tags": ["settings", "configuration", "api keys", "branding", "admin"]
+  },
+  {
+    "id": 6,
+    "version": "1.0.0",
+    "date": "2026-01-20",
+    "title": "Location Maps",
+    "category": "feature",
+    "module": "maps",
+    "description": "Create and manage a directory of named locations with addresses, coordinates, categories, opening hours, and contact details. Locations are served via GET /api/v1/locations and can be embedded in any frontend map implementation. A built-in admin map preview uses Leaflet.js.",
+    "benefit": "Maintain a store locator, venue directory, or any location-based feature without a separate database or mapping SaaS subscription. All data stays in your own system.",
+    "usage": [
+      "Open Maps from the Site section of the sidebar.",
+      "Click Add Location and fill in the name, address, and coordinates.",
+      "Assign a category to group related locations.",
+      "Fetch locations from your frontend via GET /api/v1/locations?category=store."
+    ],
+    "tags": ["maps", "locations", "api", "leaflet", "store locator"]
+  },
+  {
+    "id": 5,
+    "version": "1.0.0",
+    "date": "2026-01-20",
+    "title": "Events Management",
+    "category": "feature",
+    "module": "events",
+    "description": "Create and manage events with title, description, start/end date-time, location, category, image, and ticket/registration URL. Events are served via GET /api/v1/events and support filtering by date range and category. Upcoming events are highlighted automatically.",
+    "benefit": "Publish and maintain an event calendar without a third-party plugin. Frontend developers can query events from the REST API to power any calendar or listing UI.",
+    "usage": [
+      "Open Events from the Content section of the sidebar.",
+      "Click Add Event and complete the details including date and location.",
+      "Past events are automatically archived in the listing.",
+      "Fetch events from your frontend via GET /api/v1/events."
+    ],
+    "tags": ["events", "calendar", "api", "scheduling"]
+  },
+  {
+    "id": 4,
+    "version": "1.0.0",
+    "date": "2026-01-20",
+    "title": "Form Builder",
+    "category": "feature",
+    "module": "forms",
+    "description": "Drag-and-drop form builder supporting text, email, phone, textarea, select, checkbox, radio, date, and file upload field types. Form submissions are stored in the CMS and viewable in the admin panel. Optional email notification on new submission. Spam protection via honeypot field.",
+    "benefit": "Create contact, enquiry, or lead-capture forms without a third-party service or custom code. All submissions are stored securely in your own system and can be exported.",
+    "usage": [
+      "Open Forms from the Site section of the sidebar.",
+      "Click New Form and drag fields from the palette onto the canvas.",
+      "Set field labels, placeholders and whether they are required.",
+      "Copy the embed code and paste it into any page's HTML block.",
+      "View submissions from the Submissions tab of the form."
+    ],
+    "tags": ["forms", "contact", "lead capture", "submissions"]
+  },
+  {
+    "id": 3,
+    "version": "1.0.0",
+    "date": "2026-01-20",
+    "title": "Navigation Menus",
+    "category": "feature",
+    "module": "menus",
+    "description": "Create unlimited navigation menus with drag-and-drop ordering and nesting (up to 2 levels deep). Menu items can link to internal pages, blog posts, custom URLs, or anchor targets. Multiple menus can be assigned different locations (primary, footer, sidebar) and consumed by the frontend via the REST API.",
+    "benefit": "Build and reorder site navigation visually without touching template files. Changes appear instantly across the entire site.",
+    "usage": [
+      "Open Menus from the Site section of the sidebar.",
+      "Click New Menu, give it a name and assign a location (e.g. Primary).",
+      "Drag pages or custom links onto the menu canvas.",
+      "Nest items by dragging them slightly to the right of a parent item.",
+      "Save — the frontend reads the menu from the REST API automatically."
+    ],
+    "tags": ["menus", "navigation", "drag-and-drop", "frontend"]
+  },
+  {
+    "id": 2,
+    "version": "1.0.0",
+    "date": "2026-01-20",
+    "title": "Blog & Post Management",
+    "category": "feature",
+    "module": "blogs",
+    "description": "Full-featured blog engine with rich text editing, featured image, excerpt, category, tags, author attribution, custom publish date, and three status workflows: Draft → Scheduled → Published. Bulk publish, unpublish, and delete. Posts are available via GET /api/v1/posts with filtering by status, category, and keyword search.",
+    "benefit": "Run a full editorial workflow — draft privately, schedule for the future, or publish instantly. Team editors can write while admins control what goes live.",
+    "usage": [
+      "Open Blogs from the Content section of the sidebar.",
+      "Click New Post and write your content using the rich text editor.",
+      "Set status to Draft while writing, then Scheduled or Published when ready.",
+      "Use the bulk action checkboxes to publish or unpublish multiple posts at once.",
+      "Query posts from your frontend via GET /api/v1/posts?status=published."
+    ],
+    "tags": ["blogs", "posts", "publishing", "editorial", "api"]
+  },
+  {
+    "id": 1,
+    "version": "1.0.0",
+    "date": "2026-01-20",
+    "title": "Page Management",
+    "category": "feature",
+    "module": "pages",
+    "description": "Create, edit, and publish website pages with a rich text content editor, custom slug, meta title, meta description, and template assignment. Pages support scheduled publishing (go live at a future date), draft mode, and version history via page_history.json. Bulk publish/unpublish/delete with admin confirmation. Pages are served via GET /api/v1/pages.",
+    "benefit": "Build and maintain your entire website from a single admin panel — no developer needed for content updates. Schedule updates in advance so they publish automatically.",
+    "usage": [
+      "Open Pages from the Content section of the sidebar.",
+      "Click New Page and enter the title — the slug auto-generates from it.",
+      "Write content in the editor, fill in meta tags for SEO, then Save.",
+      "Set a future publish date to schedule the page to go live automatically.",
+      "Query pages from your frontend via GET /api/v1/pages?published=true."
+    ],
+    "tags": ["pages", "content", "publishing", "seo", "api"]
+  },
+  {
+    "id": 13,
+    "version": "1.0.0",
+    "date": "2026-01-20",
+    "title": "Media Library",
+    "category": "feature",
+    "module": "media",
+    "description": "Centralised media manager for uploading, organising, and serving images, documents, and other files. Supports folder organisation, file type filtering, and a searchable grid or list view. Uploaded files are catalogued in data/media.json and accessible via GET /api/v1/media (requires read API key).",
+    "benefit": "Keep all site assets in one organised library instead of scattered across folders. Reuse any uploaded file across pages and posts without re-uploading.",
+    "usage": [
+      "Open Media Library from the Site section of the sidebar.",
+      "Drag and drop files onto the upload zone, or click to browse.",
+      "Use folders to organise assets by project or content type.",
+      "Click any file to copy its URL for use in pages, posts, or products.",
+      "Search by filename or filter by type (image, document, video) to find assets quickly."
+    ],
+    "tags": ["media", "files", "images", "uploads", "library"]
+  },
+  {
+    "id": 14,
+    "version": "1.0.0",
+    "date": "2026-01-20",
+    "title": "Sitemap Generator",
+    "category": "feature",
+    "module": "sitemap",
+    "description": "One-click sitemap.xml generator that includes all published pages and blog posts with their last-modified timestamps and change frequency hints. Output conforms to the sitemaps.org XML protocol and can be submitted directly to Google Search Console and Bing Webmaster Tools.",
+    "benefit": "Get your content indexed by search engines faster. A properly structured sitemap signals to crawlers which pages matter and when they were last updated.",
+    "usage": [
+      "Open Sitemap from the System section of the sidebar.",
+      "Click Generate Sitemap to create or refresh sitemap.xml.",
+      "From SparkCMS 1.2, the sitemap regenerates automatically on every save — no manual step needed.",
+      "Copy the sitemap URL and submit it in Google Search Console."
+    ],
+    "tags": ["sitemap", "seo", "xml", "indexing", "google"]
+  }
+]
