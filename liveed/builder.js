@@ -1,7 +1,7 @@
 // File: builder.js
 import { initDragDrop, addBlockControls } from './modules/dragDrop.js';
 import { initSettings, openSettings, applyStoredSettings, confirmDelete } from './modules/settings.js';
-import { ensureBlockState, getSettings, setSetting } from './modules/state.js';
+import { ensureBlockState, getSettings, setSetting, deleteBlockState, resetStateMap, stateMap } from './modules/state.js';
 import { initUndoRedo } from './modules/undoRedo.js';
 import { initWysiwyg } from './modules/wysiwyg.js';
 import { initMediaPicker, openMediaPicker } from './modules/mediaPicker.js';
@@ -21,6 +21,21 @@ let paletteEl;
 // Delay before auto-saving after a change. A longer delay prevents rapid
 // successive saves while the user is still actively editing.
 const SAVE_DEBOUNCE_DELAY = 1000;
+
+
+function syncStateMapWithCanvas() {
+  if (!canvas) return;
+  const liveIds = new Set();
+  canvas.querySelectorAll('.block-wrapper[data-block-id]').forEach((block) => {
+    const id = ensureBlockState(block);
+    if (id) liveIds.add(id);
+  });
+  stateMap.forEach((_, id) => {
+    if (!liveIds.has(id)) {
+      deleteBlockState(id);
+    }
+  });
+}
 function storeDraft() {
   if (!canvas) return;
   const data = {
@@ -429,6 +444,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = JSON.parse(draft);
       if (data.timestamp > lastSavedTimestamp && data.html) {
         canvas.innerHTML = data.html;
+        resetStateMap();
+        syncStateMapWithCanvas();
         lastSavedTimestamp = data.timestamp;
       } else {
         localStorage.removeItem(builderDraftKey);
@@ -445,6 +462,8 @@ document.addEventListener('DOMContentLoaded', () => {
     .then((serverDraft) => {
       if (serverDraft && serverDraft.timestamp > lastSavedTimestamp) {
         canvas.innerHTML = serverDraft.content;
+        resetStateMap();
+        syncStateMapWithCanvas();
         lastSavedTimestamp = serverDraft.timestamp;
         localStorage.setItem(builderDraftKey, JSON.stringify(serverDraft));
         previousSavedLinkTargets = new Set(collectLinkTargets(canvas.innerHTML).keys());
@@ -508,7 +527,15 @@ document.addEventListener('DOMContentLoaded', () => {
     applyStoredSettings,
   });
 
-  const history = initUndoRedo({ canvas, onChange: scheduleSave, maxHistory: 15 });
+  const history = initUndoRedo({
+    canvas,
+    onChange: scheduleSave,
+    onApplyState: () => {
+      resetStateMap();
+      syncStateMapWithCanvas();
+    },
+    maxHistory: 15,
+  });
   const undoBtn = palette.querySelector('.undo-btn');
   const redoBtn = palette.querySelector('.redo-btn');
   const saveBtn = palette.querySelector('.manual-save-btn');
@@ -528,6 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
   canvas.addEventListener('change', scheduleSave);
 
   canvas.querySelectorAll('.block-wrapper').forEach(addBlockControls);
+  syncStateMapWithCanvas();
   executeScripts(canvas, { blockType: null });
 
   function updateCanvasPlaceholder() {
@@ -541,6 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateCanvasPlaceholder();
 
   document.addEventListener('canvasUpdated', updateCanvasPlaceholder);
+  document.addEventListener('canvasUpdated', syncStateMapWithCanvas);
   document.addEventListener('canvasUpdated', scheduleSave);
 
   canvas.addEventListener('click', (e) => {
@@ -574,11 +603,14 @@ document.addEventListener('DOMContentLoaded', () => {
       addBlockControls(clone);
       applyStoredSettings(clone);
       executeScripts(clone, { blockType: clone.dataset.template ? clone.dataset.template.replace(/\.php$/, '') : undefined });
+      syncStateMapWithCanvas();
       document.dispatchEvent(new Event('canvasUpdated'));
     } else if (e.target.closest('.block-controls .delete')) {
       confirmDelete('Delete this block?').then((ok) => {
         if (ok) {
+          deleteBlockState(block);
           block.remove();
+          syncStateMapWithCanvas();
           updateCanvasPlaceholder();
           scheduleSave();
         }

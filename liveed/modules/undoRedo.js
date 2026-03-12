@@ -3,6 +3,7 @@ export function initUndoRedo(options = {}) {
   const canvas = options.canvas;
   const restore = options.restore;
   const onChange = options.onChange;
+  const onApplyState = options.onApplyState;
   const maxHistory = options.maxHistory || 15;
   if (!canvas) return;
   let history = new Array(maxHistory);
@@ -46,6 +47,7 @@ export function initUndoRedo(options = {}) {
     canvas.innerHTML = html;
     if (restore) restore();
     recording = true;
+    if (typeof onApplyState === 'function') onApplyState(html);
     if (typeof onChange === 'function') onChange(html);
   };
 
