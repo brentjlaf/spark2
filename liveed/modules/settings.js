@@ -8,6 +8,7 @@ let settingsPanel;
 let settingsContent;
 let savePageFn;
 let renderDebounce;
+const templateRendererCache = new Map();
 
 const FORMS_SELECT_ATTR = 'data-forms-select';
 let cachedForms = null;
@@ -314,15 +315,37 @@ function validateSettings() {
   return valid;
 }
 
+function stripTemplateSettingMarkup(html) {
+  return html.replace(/<templateSetting[^>]*>[\s\S]*?<\/templateSetting>/i, '');
+}
+
+function getTemplateRenderer(block, templateSource) {
+  const cacheKey = block.dataset.template || '__inline__';
+  const cached = templateRendererCache.get(cacheKey);
+  if (cached && cached.source === templateSource) {
+    return cached.render;
+  }
+  const render = (settingsMap) =>
+    templateSource.replace(/\{([^{}]+)\}/g, (token, name) => {
+      if (Object.prototype.hasOwnProperty.call(settingsMap, name)) {
+        return settingsMap[name];
+      }
+      return token;
+    });
+  templateRendererCache.set(cacheKey, { source: templateSource, render });
+  return render;
+}
+
 function renderBlock(block) {
   ensureBlockState(block);
   const settings = getSettings(block);
   const original = block.dataset.original || block.innerHTML;
-  let html = original;
+  const templateHtml = stripTemplateSettingMarkup(original);
   const templateSetting = getTemplateSettingElement(block);
   if (!templateSetting) return;
   const inputs = templateSetting.querySelectorAll('input[name], textarea[name], select[name]');
   const processed = new Set();
+  const renderValues = {};
   inputs.forEach((input) => {
     const name = input.name;
     if (processed.has(name)) return;
@@ -338,10 +361,11 @@ function renderBlock(block) {
       value = input.value || '';
     }
     setSetting(block, name, value);
+    renderValues[name] = value;
     processed.add(name);
-    html = html.split('{' + name + '}').join(value);
   });
-  html = html.replace(/<templateSetting[^>]*>[\s\S]*?<\/templateSetting>/i, '');
+  const render = getTemplateRenderer(block, templateHtml);
+  const html = render(renderValues);
   const existingAreas = Array.from(block.querySelectorAll('.drop-area')).map((a) => Array.from(a.childNodes));
   const temp = document.createElement('div');
   temp.innerHTML = html;
