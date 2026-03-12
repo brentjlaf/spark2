@@ -41,7 +41,6 @@ $featureCount  = $catCounts['feature']     ?? 0;
 $improvCount   = $catCounts['improvement'] ?? 0;
 $fixCount      = ($catCounts['fix'] ?? 0) + ($catCounts['security'] ?? 0);
 
-$isAdmin       = user_is_admin();
 $entriesJson   = htmlspecialchars(json_encode(array_values($entries), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8');
 
 $catLabels  = ['feature' => 'Feature', 'improvement' => 'Improvement', 'fix' => 'Fix', 'security' => 'Security'];
@@ -165,7 +164,7 @@ $moduleLabels = [
 </style>
 
 <div class="content-section" id="changelog">
-    <div class="cl-dashboard" data-entries="<?php echo $entriesJson; ?>" data-is-admin="<?php echo $isAdmin ? '1' : '0'; ?>">
+    <div class="cl-dashboard" data-entries="<?php echo $entriesJson; ?>">
 
         <!-- Hero -->
         <header class="cl-hero">
@@ -176,11 +175,6 @@ $moduleLabels = [
                     <p class="cl-hero-subtitle">Every feature, improvement, and fix — with full details on what it does and how to use it.</p>
                 </div>
                 <div class="cl-hero-actions">
-                    <?php if ($isAdmin): ?>
-                    <button type="button" class="cl-btn cl-btn--ghost" id="clAddBtn">
-                        <i class="fas fa-plus" aria-hidden="true"></i> Add Entry
-                    </button>
-                    <?php endif; ?>
                     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;margin-top:.25rem">
                         <span style="color:rgba(255,255,255,.7);font-size:.75rem">Latest version</span>
                         <span style="color:#fff;font-size:1.1rem;font-weight:800;font-family:monospace">v<?php echo htmlspecialchars($latestVer, ENT_QUOTES, 'UTF-8'); ?></span>
@@ -276,7 +270,6 @@ foreach ($groups as $ver => $group):
     $eDateLabel = $eDate ? date('M j, Y', strtotime($eDate)) : '';
     $modLabel   = $moduleLabels[$eMod] ?? ucfirst($eMod);
     $catLabel   = $catLabels[$eCat]    ?? ucfirst($eCat);
-    $eJson      = htmlspecialchars(json_encode($e, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8');
     $searchText = strtolower($eTitle . ' ' . $eDesc . ' ' . $eBen . ' ' . $eMod . ' ' . $eCat);
 ?>
                     <div class="cl-entry"
@@ -292,12 +285,6 @@ foreach ($groups as $ver => $group):
                             </div>
                             <h4 class="cl-entry-title"><?php echo htmlspecialchars($eTitle, ENT_QUOTES, 'UTF-8'); ?></h4>
                             <?php if ($eDateLabel): ?><span class="cl-entry-date"><?php echo htmlspecialchars($eDateLabel, ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
-                            <?php if ($isAdmin): ?>
-                            <div class="cl-entry-actions">
-                                <button class="cl-btn cl-btn--sm cl-btn--edit" data-edit='<?php echo $eJson; ?>' title="Edit entry"><i class="fas fa-pen"></i></button>
-                                <button class="cl-btn cl-btn--sm cl-btn--danger" data-delete="<?php echo $eId; ?>" data-name="<?php echo htmlspecialchars($eTitle, ENT_QUOTES, 'UTF-8'); ?>" title="Delete entry"><i class="fas fa-trash"></i></button>
-                            </div>
-                            <?php endif; ?>
                         </div>
                         <?php if ($eDesc): ?><p class="cl-entry-desc"><?php echo htmlspecialchars($eDesc, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
                         <?php if ($eBen): ?>
@@ -325,83 +312,9 @@ foreach ($groups as $ver => $group):
                 <div class="cl-empty">
                     <i class="fas fa-rocket" aria-hidden="true"></i>
                     <p>No changelog entries yet.</p>
-                    <?php if ($isAdmin): ?><p style="font-size:.82rem">Click <strong>Add Entry</strong> to document your first update.</p><?php endif; ?>
                 </div>
 <?php endif; ?>
             </div>
         </section>
     </div>
-
-    <!-- Add / Edit Modal -->
-    <div class="cl-modal-overlay" id="clModalOverlay" role="dialog" aria-modal="true" aria-labelledby="clModalTitle">
-        <div class="cl-modal">
-            <div class="cl-modal-header">
-                <h3 class="cl-modal-title" id="clModalTitle">Add Changelog Entry</h3>
-                <button class="cl-modal-close" id="clModalClose" aria-label="Close"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="cl-modal-body">
-                <div class="cl-form-error" id="clFormError"></div>
-                <form id="clForm" novalidate>
-                    <input type="hidden" id="clEntryId" name="id" value="">
-                    <div class="cl-form-grid">
-                        <div class="cl-form-group full">
-                            <label class="cl-form-label" for="clTitle">Title *</label>
-                            <input type="text" id="clTitle" name="title" class="cl-form-input" required placeholder="e.g. Commerce Module">
-                        </div>
-                        <div class="cl-form-group">
-                            <label class="cl-form-label" for="clVersion">Version *</label>
-                            <input type="text" id="clVersion" name="version" class="cl-form-input" placeholder="e.g. 1.3.0" required>
-                        </div>
-                        <div class="cl-form-group">
-                            <label class="cl-form-label" for="clDate">Date</label>
-                            <input type="date" id="clDate" name="date" class="cl-form-input" value="<?php echo date('Y-m-d'); ?>">
-                        </div>
-                        <div class="cl-form-group">
-                            <label class="cl-form-label" for="clCategory">Category</label>
-                            <select id="clCategory" name="category" class="cl-form-select">
-                                <option value="feature">Feature</option>
-                                <option value="improvement">Improvement</option>
-                                <option value="fix">Fix</option>
-                                <option value="security">Security</option>
-                            </select>
-                        </div>
-                        <div class="cl-form-group">
-                            <label class="cl-form-label" for="clModule">Module</label>
-                            <select id="clModule" name="module" class="cl-form-select">
-                                <?php foreach ($moduleLabels as $key => $label): ?>
-                                <option value="<?php echo $key; ?>"><?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="cl-form-section">Details</div>
-                        <div class="cl-form-group full">
-                            <label class="cl-form-label" for="clDescription">Description</label>
-                            <textarea id="clDescription" name="description" class="cl-form-textarea" placeholder="What was added or changed, and how it works…"></textarea>
-                        </div>
-                        <div class="cl-form-group full">
-                            <label class="cl-form-label" for="clBenefit">Why it matters (benefit)</label>
-                            <textarea id="clBenefit" name="benefit" class="cl-form-textarea" style="min-height:60px" placeholder="How does this benefit the user?"></textarea>
-                        </div>
-                        <div class="cl-form-group full">
-                            <label class="cl-form-label">How to use (steps)</label>
-                            <ol class="cl-steps-list" id="clStepsList"></ol>
-                            <button type="button" class="cl-add-step" id="clAddStep"><i class="fas fa-plus"></i> Add step</button>
-                        </div>
-                        <div class="cl-form-group full">
-                            <label class="cl-form-label" for="clTags">Tags</label>
-                            <input type="text" id="clTags" name="tags" class="cl-form-input" placeholder="e.g. seo, performance, api (comma-separated)">
-                            <span class="cl-form-hint">Comma-separated keywords for search</span>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="cl-modal-footer">
-                <button type="button" class="cl-btn" style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb" id="clModalCancel">Cancel</button>
-                <button type="button" class="cl-btn cl-btn--primary" id="clModalSave"><i class="fas fa-save"></i> Save Entry</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="cl-toast" id="clToast"></div>
 </div>
