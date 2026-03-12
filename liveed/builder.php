@@ -70,7 +70,6 @@ $canvasPlaceholder = '
   </div>
 </div>';
 $canvasContent = $page['content'] ? sanitize_html((string) $page['content']) : $canvasPlaceholder;
-$themeHtml = preg_replace('/<div class="drop-area"><\\/div>/', '<div id="canvas" class="canvas">' . $canvasContent . '</div>', $themeHtml);
 
 $cssFiles = [
     'builder-core.css',
@@ -85,7 +84,6 @@ foreach ($cssFiles as $css) {
     $headInject .= "<link rel=\"stylesheet\" href=\"{$scriptBase}/liveed/css/$css\">";
 }
 $headInject .= "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css\"/>";
-$themeHtml = preg_replace('/<head>/', '<head>' . $headInject, $themeHtml, 1);
 
 $builderHeader = '<header class="builder-header" title="Drag to reposition">'
     . '<div  class="title-top"><div class="title">Editing: ' . htmlspecialchars($page['title']) . '</div> '
@@ -127,7 +125,29 @@ $builderEnd = '</main><div id="settingsPanel" class="settings-panel"><div class=
     . '<script type="module" src="' . $scriptBase . '/liveed/builder.js"></script>'
     . '<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>';
 
-$themeHtml = preg_replace('/<body([^>]*)>/', '<body$1>' . $builderStart, $themeHtml, 1);
-$themeHtml = preg_replace('/<\/body>/', $builderEnd . '</body>', $themeHtml, 1);
+$slots = [
+    'LIVEED_HEAD' => $headInject,
+    'LIVEED_CANVAS' => '<div id="canvas" class="canvas">' . $canvasContent . '</div>',
+    'LIVEED_BODY_START' => $builderStart,
+    'LIVEED_BODY_END' => $builderEnd,
+];
+
+foreach ($slots as $slot => $replacement) {
+    $token = '<!-- ' . $slot . ' -->';
+    $occurrences = substr_count($themeHtml, $token);
+    if ($occurrences !== 1) {
+        error_log(sprintf(
+            'Builder template error: expected exactly one %s marker in %s, found %d.',
+            $token,
+            $templateFile ?: 'page template',
+            $occurrences
+        ));
+        http_response_code(500);
+        echo 'Builder template markers are missing or invalid.';
+        exit;
+    }
+
+    $themeHtml = str_replace($token, $replacement, $themeHtml);
+}
 
 echo $themeHtml;

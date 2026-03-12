@@ -28,5 +28,7 @@ if (is_string($faviconSetting) && $faviconSetting !== '' && preg_match('#^https?
         <link rel="stylesheet" href="<?php echo htmlspecialchars($themeBase); ?>/css/root.css">
         <link rel="stylesheet" href="<?php echo htmlspecialchars($themeBase); ?>/css/skin.css">
         <link rel="stylesheet" href="<?php echo htmlspecialchars($themeBase); ?>/css/override.css">
+
+        <!-- LIVEED_HEAD -->
     </head>
     <body<?php echo $bodyClass !== '' ? ' class="' . htmlspecialchars($bodyClass) . '"' : ''; ?>>
