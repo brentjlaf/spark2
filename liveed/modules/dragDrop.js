@@ -1,7 +1,7 @@
 // File: dragDrop.js
 import { ensureBlockState } from './state.js';
 import { executeScripts } from "./executeScripts.js";
-import { getApiUrl } from './api.js';
+import { getApiUrl, requestApiJson } from './api.js';
 
 const templateCache = new Map();
 
@@ -10,11 +10,15 @@ function loadTemplate(file) {
   if (cached) {
     return typeof cached === 'string' ? Promise.resolve(cached) : cached;
   }
-  const p = fetch(getApiUrl(basePath, 'load-block', { file }))
-    .then((r) => r.text())
-    .then((html) => {
+  const p = requestApiJson(getApiUrl(basePath, 'load-block', { file }))
+    .then((data) => {
+      const html = typeof data?.content === 'string' ? data.content : '';
       templateCache.set(file, html);
       return html;
+    })
+    .catch((error) => {
+      templateCache.delete(file);
+      throw error;
     });
   templateCache.set(file, p);
   return p;
@@ -285,6 +289,9 @@ function handleDrop(e) {
           if (openSettings) openSettings(wrapper);
           document.dispatchEvent(new Event('canvasUpdated'));
           announce(`${label} block added.`);
+        }).catch((error) => {
+          console.error('Unable to load block template:', error);
+          announce(error?.message || 'Unable to load block template.');
         });
     }
   } else if (dragSource) {

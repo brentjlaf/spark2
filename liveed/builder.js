@@ -6,7 +6,7 @@ import { initUndoRedo } from './modules/undoRedo.js';
 import { initWysiwyg } from './modules/wysiwyg.js';
 import { initMediaPicker, openMediaPicker } from './modules/mediaPicker.js';
 import { executeScripts } from "./modules/executeScripts.js";
-import { appendApiAction, getApiUrl } from './modules/api.js';
+import { appendApiAction, getApiUrl, requestApiJson } from './modules/api.js';
 
 let allBlockFiles = [];
 let favorites = new Set();
@@ -40,13 +40,14 @@ function storeDraft() {
   const requestId = ++draftSaveRequestId;
   draftSaveAbortController = new AbortController();
 
-  fetch(getApiUrl(window.builderBase, 'save-draft'), {
+  requestApiJson(getApiUrl(window.builderBase, 'save-draft'), {
     method: 'POST',
     body: fd,
     signal: draftSaveAbortController.signal,
   }).catch((error) => {
     if (error && error.name === 'AbortError') return;
     if (requestId !== draftSaveRequestId) return;
+    console.error('Failed to save draft:', error.message || error);
   });
 }
 
@@ -344,14 +345,11 @@ function savePage(options = {}) {
       saveAbortController = new AbortController();
 
       appendApiAction(fd, 'save-content');
-      return fetch(getApiUrl(window.builderBase, 'save-content'), {
+      return requestApiJson(getApiUrl(window.builderBase, 'save-content'), {
         method: 'POST',
         body: fd,
         signal: saveAbortController.signal,
-      }).then((r) => {
-        if (!r.ok) throw new Error('Save failed');
-        return r.text().then(() => targetKeys);
-      });
+      }).then(() => targetKeys);
     })
     .then((targetKeys) => {
       if (requestId !== saveRequestId) return;
@@ -375,7 +373,7 @@ function savePage(options = {}) {
       if (error && error.name === 'AbortError') return;
       if (requestId !== saveRequestId) return;
       if (statusEl) {
-        statusEl.textContent = 'Error saving';
+        statusEl.textContent = error?.message || 'Error saving';
         statusEl.classList.add('error');
         statusEl.classList.remove('saving');
       }
@@ -440,8 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   previousSavedLinkTargets = new Set(collectLinkTargets(canvas.innerHTML).keys());
 
-  fetch(getApiUrl(window.builderBase, 'load-draft', { id: window.builderPageId }))
-    .then((r) => (r.ok ? r.json() : null))
+  requestApiJson(getApiUrl(window.builderBase, 'load-draft', { id: window.builderPageId }))
     .then((serverDraft) => {
       if (serverDraft && serverDraft.timestamp > lastSavedTimestamp) {
         canvas.innerHTML = serverDraft.content;
@@ -450,7 +447,9 @@ document.addEventListener('DOMContentLoaded', () => {
         previousSavedLinkTargets = new Set(collectLinkTargets(canvas.innerHTML).keys());
       }
     })
-    .catch(() => {});
+    .catch((error) => {
+      console.warn('Could not load server draft:', error.message || error);
+    });
 
   if (viewToggle) {
     viewToggle.addEventListener('click', () => {
@@ -472,18 +471,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchInput = palette.querySelector('.palette-search');
 
   function loadPaletteBlocks() {
-    return fetch(getApiUrl(window.builderBase, 'list-blocks'))
-      .then((r) => {
-        if (!r.ok) {
-          throw new Error('Failed to load palette blocks');
-        }
-        return r.json();
-      })
+    return requestApiJson(getApiUrl(window.builderBase, 'list-blocks'))
       .then((data) => {
         allBlockFiles = data.blocks || [];
         renderPalette(palette, allBlockFiles);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Failed to load palette blocks:', error.message || error);
         allBlockFiles = [];
         renderPaletteUnavailableState(palette, loadPaletteBlocks);
       });

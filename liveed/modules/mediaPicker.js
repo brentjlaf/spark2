@@ -20,6 +20,24 @@ const cacheTTL = 300000; // 5 minutes
 let folderCache = { data: null, time: 0 };
 const imageCache = new Map();
 
+function getPayloadErrorMessage(payload, fallback) {
+  return payload?.error?.message || payload?.message || fallback;
+}
+
+async function fetchJsonOrThrow(url, options = {}, fallbackMessage = 'Request failed') {
+  const response = await fetch(url, options);
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    throw new Error(`Invalid JSON response (${response.status})`);
+  }
+  if (!response.ok) {
+    throw new Error(getPayloadErrorMessage(payload, `${fallbackMessage} (${response.status})`));
+  }
+  return payload;
+}
+
 function invalidateMediaPickerCache(folder) {
   folderCache = { data: null, time: 0 };
   if (folder) {
@@ -218,8 +236,7 @@ async function loadPickerFolders() {
   }
   setListState(pickerFolderList, 'loading', 'Loading folders…');
   try {
-    const r = await fetch(basePath + '/CMS/modules/media/list_media.php');
-    const data = await r.json();
+    const data = await fetchJsonOrThrow(basePath + '/CMS/modules/media/list_media.php', {}, 'Unable to load folders');
     folderCache = { data, time: now };
     renderFolders(data);
   } catch (err) {
@@ -227,7 +244,7 @@ async function loadPickerFolders() {
     setListState(
       pickerFolderList,
       'error',
-      'Unable to load folders.',
+      err?.message || 'Unable to load folders.',
       () => { loadPickerFolders(); }
     );
   }
@@ -272,17 +289,19 @@ async function selectPickerFolder(folder) {
   } else {
     setListState(pickerImageGrid, 'loading', 'Loading images…');
     try {
-      const r = await fetch(
+      data = await fetchJsonOrThrow(
         basePath + '/CMS/modules/media/list_media.php?folder=' + encodeURIComponent(folder)
+        ,
+        {},
+        'Unable to load media'
       );
-      data = await r.json();
       imageCache.set(folder, { data, time: now });
     } catch (err) {
       console.error('Failed to load media', err);
       setListState(
         pickerImageGrid,
         'error',
-        'Unable to load media.',
+        err?.message || 'Unable to load media.',
         () => { selectPickerFolder(folder); }
       );
       return;
@@ -379,18 +398,12 @@ async function saveEditedImage() {
   setCropSaveState('saving');
 
   try {
-    const response = await fetch(basePath + '/CMS/modules/media/crop_media.php', {
+    const payload = await fetchJsonOrThrow(basePath + '/CMS/modules/media/crop_media.php', {
       method: 'POST',
       body: fd,
-    });
-
-    if (!response.ok) {
-      throw new Error('Crop request failed with status ' + response.status);
-    }
-
-    const payload = await response.json();
+    }, 'Failed to save edited image');
     if (!payload || payload.status !== 'success') {
-      throw new Error('Crop request returned an error response');
+      throw new Error(getPayloadErrorMessage(payload, 'Crop request returned an error response'));
     }
 
     setCropSaveState('success');
@@ -401,7 +414,7 @@ async function saveEditedImage() {
     closeEdit();
   } catch (err) {
     console.error('Failed to save edited image', err);
-    setCropSaveState('error');
+    setCropSaveState('error', err?.message || 'Save failed');
   } finally {
     isSavingEdit = false;
     if (pickerEditModal && !pickerEditModal.classList.contains('active')) {
