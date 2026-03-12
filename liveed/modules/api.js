@@ -35,3 +35,28 @@ export function appendApiAction(formData, action) {
     formData.append('csrf_token', csrfToken);
   }
 }
+
+export async function parseJsonResponse(response, fallbackMessage = 'Request failed') {
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (err) {
+    throw new Error(`${fallbackMessage}: invalid JSON response.`);
+  }
+
+  if (!response.ok) {
+    const serverMessage = payload?.error?.message;
+    throw new Error(serverMessage || `${fallbackMessage} (HTTP ${response.status}).`);
+  }
+
+  if (!payload || typeof payload.ok !== 'boolean') {
+    throw new Error(`${fallbackMessage}: malformed payload.`);
+  }
+
+  if (!payload.ok) {
+    const serverMessage = payload?.error?.message;
+    throw new Error(serverMessage || `${fallbackMessage}.`);
+  }
+
+  return payload.data;
+}
