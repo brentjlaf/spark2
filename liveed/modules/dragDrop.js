@@ -4,17 +4,38 @@ import { executeScripts } from "./executeScripts.js";
 import { getApiUrl } from './api.js';
 
 const templateCache = new Map();
+const TEMPLATE_FAILURE_TTL_MS = 3000;
 
 function loadTemplate(file) {
   const cached = templateCache.get(file);
   if (cached) {
+    if (cached.type === 'failed') {
+      if (Date.now() - cached.at < TEMPLATE_FAILURE_TTL_MS) {
+        return Promise.reject(new Error('Template temporarily unavailable.'));
+      }
+      templateCache.delete(file);
+    }
     return typeof cached === 'string' ? Promise.resolve(cached) : cached;
   }
   const p = fetch(getApiUrl(basePath, 'load-block', { file }))
-    .then((r) => r.text())
+    .then((r) => {
+      if (!r.ok) throw new Error(`Failed to load template: ${r.status}`);
+      return r.text();
+    })
     .then((html) => {
       templateCache.set(file, html);
       return html;
+    })
+    .catch((err) => {
+      const failedAt = Date.now();
+      templateCache.set(file, { type: 'failed', at: failedAt });
+      setTimeout(() => {
+        const entry = templateCache.get(file);
+        if (entry && entry.type === 'failed' && entry.at === failedAt) {
+          templateCache.delete(file);
+        }
+      }, TEMPLATE_FAILURE_TTL_MS);
+      throw err;
     });
   templateCache.set(file, p);
   return p;
@@ -96,6 +117,25 @@ function clearDragOverState() {
   canvas.querySelectorAll('.drag-over').forEach((el) => {
     el.classList.remove('drag-over');
   });
+}
+
+function showBuilderMessage(message) {
+  const toast = window?.builderUI?.toast || window?.builder?.toast;
+  if (typeof toast === 'function') {
+    toast(message, { type: 'error' });
+  }
+}
+
+function resetDragState() {
+  placeholder.remove();
+  insertionIndicator.remove();
+  clearDragOverState();
+  if (dragSource) {
+    dragSource.classList.remove('dragging');
+    dragSource.setAttribute('aria-grabbed', 'false');
+  }
+  dragSource = null;
+  fromPalette = false;
 }
 
 export function initDragDrop(options = {}) {
@@ -285,6 +325,11 @@ function handleDrop(e) {
           if (openSettings) openSettings(wrapper);
           document.dispatchEvent(new Event('canvasUpdated'));
           announce(`${label} block added.`);
+        }).catch((err) => {
+          console.error('Failed to add block template:', err);
+          announce('Could not add block. Please try again.');
+          showBuilderMessage('Could not add block. Please try again.');
+          resetDragState();
         });
     }
   } else if (dragSource) {
@@ -295,24 +340,11 @@ function handleDrop(e) {
     document.dispatchEvent(new Event('canvasUpdated'));
     announce('Block moved.');
   }
-  placeholder.remove();
-  insertionIndicator.remove();
-  clearDragOverState();
-  if (dragSource) dragSource.setAttribute('aria-grabbed', 'false');
-  dragSource = null;
-  fromPalette = false;
+  resetDragState();
 }
 
 function handleDragEnd() {
-  placeholder.remove();
-  insertionIndicator.remove();
-  clearDragOverState();
-  if (dragSource) {
-    dragSource.classList.remove('dragging');
-    dragSource.setAttribute('aria-grabbed', 'false');
-  }
-  dragSource = null;
-  fromPalette = false;
+  resetDragState();
 }
 
 function getDragAfterElement(container, y) {
