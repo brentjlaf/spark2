@@ -215,7 +215,7 @@ $(function () {
     $(document).off("click", "[data-delete]").on("click", "[data-delete]", function () {
       var id   = parseInt($(this).data("delete"), 10);
       var name = $(this).data("name") || "this product";
-      if (!confirm("Delete "" + name + ""? This cannot be undone.")) return;
+      if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
       doDelete(id);
     });
   }
