@@ -202,6 +202,67 @@ function cms_entity_schemas(): array
             'indexes' => ['slug', 'sku', 'status', 'category', 'updated_at'],
             'description' => 'Commerce catalog products, inventory, pricing, and status metadata.',
         ],
+        'api_keys.json' => [
+            'table' => 'cms_api_keys',
+            'primary' => 'id',
+            'json_column' => 'payload',
+            'columns' => [
+                'name' => 'name',
+                'enabled' => 'enabled',
+                'created_at' => 'created_at',
+                'last_used_at' => 'last_used_at',
+            ],
+            'indexes' => ['name', 'enabled', 'created_at', 'last_used_at'],
+            'description' => 'API key records and permissions for external API access.',
+        ],
+        'changelog.json' => [
+            'table' => 'cms_changelog_entries',
+            'primary' => 'id',
+            'json_column' => 'payload',
+            'columns' => [
+                'version' => 'version',
+                'date' => 'date',
+                'module' => 'module',
+                'category' => 'category',
+            ],
+            'indexes' => ['version', 'date', 'module', 'category'],
+            'description' => 'System changelog entries shown in the admin updates dashboard.',
+        ],
+        'audit_log.json' => [
+            'table' => 'cms_audit_log',
+            'primary' => 'id',
+            'json_column' => 'payload',
+            'columns' => [
+                'time' => 'time',
+                'user' => 'user',
+                'action' => 'action',
+                'context' => 'context',
+            ],
+            'indexes' => ['time', 'user', 'context'],
+            'description' => 'Activity timeline entries for cross-module auditing.',
+        ],
+        'page_drafts.json' => [
+            'table' => 'cms_page_editor_drafts',
+            'primary' => 'page_id',
+            'json_column' => 'payload',
+            'columns' => [
+                'saved_at' => 'saved_at',
+                'saved_by' => 'saved_by',
+            ],
+            'indexes' => ['saved_at', 'saved_by'],
+            'description' => 'In-progress page editor draft payloads.',
+        ],
+        'blog_drafts.json' => [
+            'table' => 'cms_blog_editor_drafts',
+            'primary' => 'post_id',
+            'json_column' => 'payload',
+            'columns' => [
+                'saved_at' => 'saved_at',
+                'saved_by' => 'saved_by',
+            ],
+            'indexes' => ['saved_at', 'saved_by'],
+            'description' => 'In-progress blog editor draft payloads.',
+        ],
     ];
 }
 

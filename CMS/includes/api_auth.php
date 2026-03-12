@@ -7,6 +7,8 @@
 //   2.  X-API-Key: <key>              (common alternative)
 //   3.  ?api_key=<key>                (query-string – convenient for quick GET tests)
 
+require_once __DIR__ . '/data.php';
+
 if (!function_exists('sparkcms_authenticate_api')) {
 
     /**
@@ -45,7 +47,7 @@ if (!function_exists('sparkcms_authenticate_api')) {
     }
 
     /**
-     * Look up an API key in data/api_keys.json.
+     * Look up an API key in database-backed API-key storage.
      * Uses hash_equals() for timing-safe comparison.
      * Updates last_used_at in place (best-effort, non-blocking write).
      *
@@ -57,12 +59,7 @@ if (!function_exists('sparkcms_authenticate_api')) {
         }
 
         $keysFile = dirname(__DIR__) . '/data/api_keys.json';
-        if (!file_exists($keysFile)) {
-            return null;
-        }
-
-        $contents = @file_get_contents($keysFile);
-        $keys     = $contents !== false ? (json_decode($contents, true) ?? []) : [];
+        $keys = read_json_file($keysFile);
         if (!is_array($keys)) {
             return null;
         }
@@ -86,10 +83,7 @@ if (!function_exists('sparkcms_authenticate_api')) {
         }
 
         // Best-effort write – do not let a write failure block the API response
-        @file_put_contents(
-            $keysFile,
-            json_encode(array_values($keys), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-        );
+        write_json_file($keysFile, array_values($keys));
 
         return $matched;
     }
