@@ -1,0 +1,112 @@
+/* link checker styles */
+.link-status {
+  text-decoration: none;
+}
+.broken-link {
+  color: red;
+  background-color: rgba(255, 0, 0, 0.6) !important;
+  border: 2px solid rgba(255, 0, 0, 0.99) !important;
+}
+.working-link {
+  color: green;
+  background-color: rgba(0, 255, 0, 0.2) !important;
+  border: 2px solid rgba(0, 255, 0, 0.99) !important;
+}
+.external-link {
+  background-color: rgba(255, 255, 0, 0.2) !important;
+  border: 2px solid rgba(255, 255, 0, 0.99) !important;
+}
+.unset-link {
+  color: gray;
+  background-color: rgba(0, 255, 246, 0.6) !important;
+  border: 2px solid rgba(0, 255, 246, 0.99) !important;
+}
+
+#link-check-legend {
+  display: none;
+  position: fixed;
+  top: 55%;
+  right: 20px;
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 998;
+  width: 260px;
+  font-size: 15px;
+}
+
+.legend-item {
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.legend-color {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+  border-radius: 50%;
+  position: relative;
+  top: 5px;
+}
+.legend-color.broken {
+  background-color: red;
+}
+.legend-color.working {
+  background-color: green;
+}
+.legend-color.external {
+  background-color: yellow;
+}
+.legend-color.unset {
+  background-color: #00fff6;
+}
+
+.tooltip-icon {
+  display: inline-block;
+  margin-left: 5px;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  background-color: #ccc;
+  color: #000;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 16px;
+  font-size: 12px;
+  position: relative;
+}
+.tooltip-icon:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+.tooltip-text {
+  visibility: hidden;
+  width: 220px;
+  background-color: #333;
+  color: #fff;
+  text-align: left;
+  border-radius: 5px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1000;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.tooltip-text::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #333 transparent transparent transparent;
+}
+/* end link checker styles */

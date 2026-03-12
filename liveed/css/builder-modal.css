@@ -1,0 +1,194 @@
+/* Modal Styles */
+.builder .modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.builder .modal.active {
+  display: flex;
+}
+
+.builder .modal-content {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2);
+}
+
+.builder .modal-footer {
+  margin-top: 20px;
+  text-align: right;
+}
+
+/* Button Styles */
+.builder .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.75rem 1.6rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+  background-color: transparent;
+}
+
+.builder .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.28);
+}
+
+.builder .btn:focus-visible {
+  outline: 3px solid rgba(99, 102, 241, 0.45);
+  outline-offset: 2px;
+}
+
+.builder .btn .btn-icon,
+.builder .btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.builder .btn .btn-label {
+  line-height: 1;
+}
+
+.builder .btn-primary {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #fff;
+  border-color: #4f46e5;
+}
+
+.builder .btn-primary:hover {
+  background: #4f46e5;
+}
+
+.builder .btn-secondary {
+  background: #e2e8f0;
+  color: #1f2937;
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.builder .btn-secondary:hover {
+  background: #cbd5e0;
+  color: #0f172a;
+}
+
+.builder .btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  border-color: #dc2626;
+}
+
+.builder .btn-danger:hover {
+  background: #dc2626;
+}
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.settings-content .sparkDialog {
+  margin-bottom: 16px;
+}
+
+.settings-content dt {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #0f172a;
+}
+
+.settings-content dd {
+  margin: 0;
+}
+
+.settings-content input[type="text"],
+.settings-content input[type="number"],
+.settings-content textarea,
+.settings-content select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  border: 1px solid rgba(51, 65, 85, 0.4);
+  border-radius: 8px;
+  box-sizing: border-box;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.settings-content .color-swatch {height:32px; width:32px; display:inline-block; border-radius:50%; bordeR:1px solid #ccc;}
+
+.settings-panel .invalid {
+  border-color: #e53e3e;
+}
+
+.settings-panel .invalid:focus {
+  box-shadow: 0 0 0 2px rgba(229, 62, 62, 0.2);
+}
+
+.settings-content input[type="text"]:focus,
+.settings-content input[type="number"]:focus,
+.settings-content textarea:focus,
+.settings-content select:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
+}
+
+.canvas-container.preview-desktop .page-template.default-page {
+  width: 100%;
+}
+
+.canvas-container.preview-tablet .page-template.default-page {
+  width: 768px;
+  margin: auto;
+}
+
+.canvas-container.preview-tablet .site-header,
+.canvas-container.preview-tablet .site-footer {
+  max-width: 768px;
+  margin: auto;
+}
+
+.canvas-container.preview-phone .page-template.default-page {
+  width: 375px;
+  margin: auto;
+}
+
+.canvas-container.preview-phone .site-header,
+.canvas-container.preview-phone .site-footer {
+  max-width: 375px;
+  margin: auto;
+}
+
+@media (max-width: 480px) {
+  .canvas-container {
+    padding: 15px;
+  }
+  .canvas {
+    min-height: 400px;
+    padding: 20px;
+  }
+}

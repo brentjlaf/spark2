@@ -1,0 +1,62 @@
+/* SEO Checker Styles */
+.seo-modal {
+  display: none;
+  position: fixed;
+  z-index: 999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.4);
+}
+.seo-modal-content {
+  background-color: #fefefe;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+  max-width: 600px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+.seo-modal-content h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.seo-modal-content ul {
+  list-style: none;
+  padding: 0;
+}
+.seo-modal-content ul li {
+  background: #f9f9f9;
+  margin: 5px 0;
+  padding: 10px;
+  border-left: 5px solid #4044c6;
+  border-radius: 5px;
+}
+.seo-modal-content ul li:nth-child(even) {
+  background: #efefef;
+}
+.seo-modal-content .close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+.seo-modal-content .close:hover,
+.seo-modal-content .close:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+}
+.highlight-error {
+  border: 2px solid #cc0000 !important;
+}
+.seo-modal-content ul li.error {
+  border-left: 5px solid red;
+}
+.seo-modal-content ul li.pass {
+  border-left: 5px solid green;
+}

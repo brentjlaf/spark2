@@ -1,0 +1,78 @@
+/* Settings form styles */
+.settings-panel .settings-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-panel .settings-content dl {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(51, 65, 85, 0.2);
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
+}
+
+.settings-panel .settings-content dt {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #e2e8f0;
+}
+
+.settings-panel .settings-content dd {
+  margin: 0 0 14px 0;
+}
+
+.settings-panel .settings-content input[type="text"],
+.settings-panel .settings-content input[type="number"],
+.settings-panel .settings-content textarea,
+.settings-panel .settings-content select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(71, 85, 105, 0.6);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-panel .settings-content textarea {
+  min-height: 96px;
+  resize: vertical;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+}
+.settings-panel .settings-content input[type="text"]:focus,
+.settings-panel .settings-content input[type="number"]:focus,
+.settings-panel .settings-content textarea:focus,
+.settings-panel .settings-content select:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
+}
+.wysiwyg-toolbar {
+  position: absolute;
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 4px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 1000;
+}
+.wysiwyg-toolbar button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin: 0 2px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+.wysiwyg-toolbar button:hover {
+  background: #edf2f7;
+}
