@@ -10,6 +10,135 @@ $installed = is_file($envPath);
 $errors = [];
 $successMessage = null;
 
+function installer_load_block_template(string $file): ?array {
+    $path = __DIR__ . '/theme/templates/blocks/' . basename($file);
+    if (!is_file($path)) {
+        return null;
+    }
+
+    $raw = file_get_contents($path);
+    if ($raw === false) {
+        return null;
+    }
+
+    $templateSetting = '';
+    if (preg_match('/<templateSetting[^>]*>[\s\S]*?<\/templateSetting>/i', $raw, $matches)) {
+        $templateSetting = $matches[0];
+    }
+
+    $cleaned = preg_replace('/<templateSetting[^>]*>[\s\S]*?<\/templateSetting>/i', '', $raw, 1);
+    if ($cleaned === null) {
+        return null;
+    }
+
+    return [
+        'template_setting' => trim($templateSetting),
+        'template_source' => trim($cleaned),
+    ];
+}
+
+function installer_render_block_template(string $templateSource, array $values): string {
+    return preg_replace_callback('/\{([^{}]+)\}/', static function (array $matches) use ($values): string {
+        $key = $matches[1];
+        return isset($values[$key]) ? (string) $values[$key] : '';
+    }, $templateSource) ?? $templateSource;
+}
+
+function installer_build_block_wrapper(string $templateFile, string $templateSource, string $templateSetting, array $values): string {
+    $rendered = installer_render_block_template($templateSource, $values);
+    $attributes = [
+        'class="block-wrapper"',
+        'data-template="' . htmlspecialchars($templateFile, ENT_QUOTES, 'UTF-8') . '"',
+        'data-original="' . htmlspecialchars($templateSource, ENT_QUOTES, 'UTF-8') . '"',
+    ];
+
+    if ($templateSetting !== '') {
+        $attributes[] = 'data-ts="' . htmlspecialchars(base64_encode($templateSetting), ENT_QUOTES, 'UTF-8') . '"';
+    }
+
+    return '<div ' . implode(' ', $attributes) . '>' . $rendered . '</div>';
+}
+
+function installer_placeholder_content_for_page(array $page): ?string {
+    $title = trim((string)($page['title'] ?? 'Untitled Page'));
+    $slug = trim((string)($page['slug'] ?? 'page'));
+    $pageUrl = '/' . ltrim($slug, '/');
+
+    $headingTpl = installer_load_block_template('content.heading.php');
+    $paragraphTpl = installer_load_block_template('content.paragraph.php');
+    $buttonTpl = installer_load_block_template('interactive.button.php');
+    if (!$headingTpl || !$paragraphTpl || !$buttonTpl) {
+        return null;
+    }
+
+    $headingBlock = installer_build_block_wrapper(
+        'content.heading.php',
+        $headingTpl['template_source'],
+        $headingTpl['template_setting'],
+        [
+            'custom_text' => $title,
+            'custom_level' => 'h2',
+            'custom_align' => 'text-left',
+        ]
+    );
+
+    $paragraphBlock = installer_build_block_wrapper(
+        'content.paragraph.php',
+        $paragraphTpl['template_source'],
+        $paragraphTpl['template_setting'],
+        [
+            'custom_text' => 'This is placeholder content for the ' . $title . ' page. Replace this block content with your own copy and layout.',
+            'custom_style' => '',
+            'custom_align' => 'text-left',
+        ]
+    );
+
+    $buttonBlock = installer_build_block_wrapper(
+        'interactive.button.php',
+        $buttonTpl['template_source'],
+        $buttonTpl['template_setting'],
+        [
+            'custom_text' => 'Explore ' . $title,
+            'custom_link' => $pageUrl,
+            'custom_new_window' => '',
+            'custom_align' => 'text-left',
+            'custom_bg_color' => 'var(--primary)',
+        ]
+    );
+
+    return implode("\n", [$headingBlock, $paragraphBlock, $buttonBlock]);
+}
+
+function installer_seed_placeholder_page_content(string $pagesFile): int {
+    $pages = read_json_file($pagesFile);
+    if (!is_array($pages) || empty($pages)) {
+        return 0;
+    }
+
+    $updated = 0;
+    foreach ($pages as &$page) {
+        if (!is_array($page)) {
+            continue;
+        }
+
+        $placeholder = installer_placeholder_content_for_page($page);
+        if ($placeholder === null) {
+            continue;
+        }
+
+        $page['content'] = $placeholder;
+        $page['last_modified'] = time();
+        $updated++;
+    }
+    unset($page);
+
+    if ($updated > 0) {
+        write_json_file($pagesFile, $pages);
+    }
+
+    return $updated;
+}
+
 function render_field($name, $label, $value = '', $type = 'text') {
     $escapedValue = htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
     $escapedLabel = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
@@ -77,11 +206,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     cms_ensure_table($pdo, $schema);
                 }
 
+                $pagesFile = __DIR__ . '/CMS/data/pages.json';
+                $placeholderPageCount = installer_seed_placeholder_page_content($pagesFile);
+
                 if (function_exists('ensure_drafts_table')) {
                     ensure_drafts_table();
                 }
 
-                $successMessage = "Installation complete! Database populated from spark_seed.sql and missing tables ensured. You can now log in at <a href=\"CMS/login.php\">CMS/login.php</a>.";
+                $successMessage = "Installation complete! Database populated from spark_seed.sql, missing tables ensured, and placeholder block content generated for {$placeholderPageCount} pages. You can now log in at <a href=\"CMS/login.php\">CMS/login.php</a>.";
             } catch (Throwable $e) {
                 $errors[] = 'Database import failed: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
             }
