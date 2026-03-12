@@ -201,7 +201,26 @@ export function initUndoRedo(options = {}) {
     }
   };
 
-  document.addEventListener('keydown', (e) => {
+  const isBuilderActive = () => {
+    const builder = document.querySelector('.builder');
+    return !!builder && !builder.classList.contains('view-mode');
+  };
+
+  const shouldIgnoreShortcut = (e) => {
+    const focusEl = e.target instanceof Element ? e.target : document.activeElement;
+    if (!(focusEl instanceof Element)) return false;
+
+    if (focusEl.closest('input, textarea, select')) return true;
+
+    const inModal = !!focusEl.closest('.modal');
+    if (inModal && !canvas.contains(focusEl)) return true;
+
+    return false;
+  };
+
+  const onKeydown = (e) => {
+    if (!isBuilderActive() || shouldIgnoreShortcut(e)) return;
+
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
       e.preventDefault();
       undo();
@@ -209,7 +228,15 @@ export function initUndoRedo(options = {}) {
       e.preventDefault();
       redo();
     }
-  });
+  };
 
-  return { record, undo, redo };
+  document.addEventListener('keydown', onKeydown);
+
+  const cleanup = () => {
+    clearTimeout(timer);
+    observer.disconnect();
+    document.removeEventListener('keydown', onKeydown);
+  };
+
+  return { record, undo, redo, cleanup };
 }

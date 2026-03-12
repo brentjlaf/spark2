@@ -605,6 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('beforeunload', () => {
     storeDraft();
+    if (history && typeof history.cleanup === 'function') history.cleanup();
   });
 
 });
